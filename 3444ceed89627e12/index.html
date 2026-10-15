@@ -203,7 +203,10 @@
   .rej-chip.bad{background:var(--bad-bg); color:var(--bad);}
   .rej-path{font-size:12px; color:var(--muted); margin-top:3px; word-break:break-word;}
   .rej-copy{font-size:12.5px; margin-top:6px;}
-  .rej-reason{font-size:12.5px; color:var(--muted); margin-top:6px; line-height:1.5; text-align:justify;}
+  .rej-row.read{opacity:.55;}
+  .rej-read{margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer;}
+  .rej-read input{width:15px; height:15px; accent-color:var(--accent);}
+  .rej-reason{font-size:13px; font-weight:600; color:var(--bad); margin-top:6px;}
   .rej-card{max-width:640px; max-height:92vh; overflow-y:auto;}
   .rej-form{display:grid; gap:10px; margin-bottom:14px;}
   .rej-form label, .rej-on{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
@@ -706,7 +709,6 @@
       <div class="rej-form">
         <label>Título <input type="text" id="rejHeadline" placeholder="(manter o atual)"></label>
         <label>Descrição <input type="text" id="rejDescription" placeholder="(manter a atual)"></label>
-        <label>Marca <input type="text" id="rejBrand" placeholder="(manter a atual)"></label>
       </div>
       <div class="rej-pick">
         <div class="rej-pick-head">Trocar o criativo <span class="cell-muted">(opcional — escolha da galeria)</span></div>
@@ -1606,6 +1608,7 @@
             <div class="rej-bulk" id="rejBulk" hidden>
               <span id="rejSelCount"></span>
               <button type="button" class="select-all-btn" id="rejSelAllBtn"></button>
+              <button type="button" class="select-all-btn" id="rejReadBtn">Marcar como lido</button>
               <button type="button" class="rej-edit-btn" id="rejEditBtn">Editar selecionados</button>
             </div>
           </div>
@@ -2792,15 +2795,15 @@
   function renderBell(){
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
-    const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
+    const rej = (typeof rejUnread === 'function' && typeof rejAds !== 'undefined') ? rejUnread() : [];
     const total = balAlerts.length + rej.length;
     bell.classList.toggle('idle', !total);
     document.getElementById('balanceBellCount').textContent = total;
     bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
     let html = '';
     if (rej.length) {
-      html += '<div class="bell-pop-title">Anúncios recusados (' + rej.length + ')</div>' +
-        rej.slice(0, 6).map(a => '<div class="bell-pop-row"><span>' + ccEsc(a.name) + ' · ' + ccEsc(a.adAccountName) + '</span></div>').join('') +
+      html += '<div class="bell-pop-title">Anúncios recusados não lidos (' + rej.length + ')</div>' +
+        rej.slice(0, 6).map(a => '<div class="bell-pop-row"><span>' + ccEsc(a.name) + ' · ' + ccEsc(a.adAccountName) + '</span><span class="cell-muted">' + ccEsc(rejReason(a.statusTxt)) + '</span></div>').join('') +
         (rej.length > 6 ? '<div class="bell-pop-row cell-muted">+' + (rej.length - 6) + ' …</div>' : '') +
         '<button type="button" class="bell-pop-link" data-goto-view="rejeicoes">Ver em Rejeições →</button>';
     }
@@ -2913,15 +2916,26 @@
   let rejPickIds = [];
   let rejBusy = false;
 
-  function rejShort(txt){
-    const t = String(txt || '').toLowerCase();
-    if (/celebrit/.test(t)) return 'Celebridade';
-    if (/sexual|adult/.test(t)) return 'Conteúdo sexual/adulto';
-    if (/before.{0,10}after|before and after/.test(t)) return 'Antes e depois';
-    if (/health|medical|miracle|cure/.test(t)) return 'Saúde/alegações';
-    if (/misleading|deceptive/.test(t)) return 'Enganoso';
-    return 'Política de anúncios';
+  // Short, plain reason for the list ("uso de celebridade"); full NewsBreak text goes in the tooltip.
+  function rejReason(txt){
+    const raw = String(txt || '').trim();
+    const t = raw.toLowerCase();
+    if (!raw) return 'motivo não informado';
+    if (/celebrit/.test(t)) return 'uso de celebridade';
+    if (/sexual|adult|nudity|nude/.test(t)) return 'conteúdo sexual/adulto';
+    if (/before.{0,12}after/.test(t)) return 'antes e depois';
+    if (/miracle|cure|medical|health claim|weight loss/.test(t)) return 'alegação de saúde';
+    if (/misleading|deceptive|clickbait|sensational/.test(t)) return 'enganoso/sensacionalista';
+    if (/landing page|website|destination|url/.test(t)) return 'página de destino';
+    if (/trademark|copyright|brand/.test(t)) return 'marca/direitos autorais';
+    const clean = raw.replace(/^violation of advertising policy\s*[-–:]\s*/i, '').split(/(?<=[.!?])\s/)[0];
+    return clean.length > 90 ? clean.slice(0, 87) + '…' : clean;
   }
+
+  // "Lido": acknowledged rejections stay in the list (dimmed) but stop notifying.
+  let rejRead = new Set((() => { try { return JSON.parse(loadPref('rejRead', '[]')); } catch { return []; } })());
+  function saveRejRead(){ savePref('rejRead', JSON.stringify([...rejRead])); }
+  function rejUnread(){ return rejAds.filter(a => !rejRead.has(a.id)); }
 
   let rejLiveLoaded = false;
   // Rejected ads that matter: campaign ON + ad set ON + ad ON (anything paused/ended no longer matters).
@@ -2938,8 +2952,14 @@
         });
       });
     });
-    out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
+    out.sort((x, y) => (rejRead.has(x.id) - rejRead.has(y.id)) || String(y.id).localeCompare(String(x.id)));
     rejAds = out;
+    // an ad that left the rejected list (edited/approved) is forgotten, so a new rejection notifies again
+    if (rejLiveLoaded && (campaigns || []).length) {
+      const before = rejRead.size;
+      rejRead = new Set([...rejRead].filter(id => out.some(a => a.id === id)));
+      if (rejRead.size !== before) saveRejRead();
+    }
     rejLoaded = rejLiveLoaded;
     rejSelected = new Set([...rejSelected].filter(id => out.some(a => a.id === id)));
     renderBell();
@@ -2966,7 +2986,7 @@
       (n === 'all' ? 'Todas' : ccEsc(n)) + (n === 'all' ? ' (' + rejAds.length + ')' : ' (' + rejAds.filter(a => a.adAccountName === n).length + ')') + '</button>').join('');
     document.querySelectorAll('[data-rej-acc]').forEach(b => b.addEventListener('click', () => { rejAccFilter = b.dataset.rejAcc; renderRejeicoes(); }));
     const vis = rejVisible();
-    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') : '';
+    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') + (vis.filter(a => !rejRead.has(a.id)).length !== vis.length ? ' · ' + vis.filter(a => !rejRead.has(a.id)).length + ' não lido' + (vis.filter(a => !rejRead.has(a.id)).length === 1 ? '' : 's') : '') : '';
     const failNote = rejFailed.length ? '<div class="empty-state" style="color:var(--bad);">Não consegui ler: ' + ccEsc(rejFailed.join(' · ')) + '</div>' : '';
     if (!rejLoaded) { list.innerHTML = '<div class="empty-state">Carregando…</div>'; }
     else if (!vis.length) { list.innerHTML = failNote + '<div class="empty-state">Nenhum anúncio recusado em campanha, conjunto e anúncio ativos. 🎉</div>'; }
@@ -2974,14 +2994,20 @@
       list.innerHTML = failNote + vis.map(a => {
         const isVideo = a.creativeType === 'VIDEO';
         const media = isVideo ? '<video class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" loading="lazy">';
-        return '<div class="rej-row' + (rejSelected.has(a.id) ? ' sel' : '') + '" data-rej-id="' + a.id + '">' +
-          '<input type="checkbox" data-rej-check="' + a.id + '"' + (rejSelected.has(a.id) ? ' checked' : '') + '>' +
+        const read = rejRead.has(a.id);
+        return '<div class="rej-row' + (rejSelected.has(a.id) ? ' sel' : '') + (read ? ' read' : '') + '" data-rej-id="' + a.id + '">' +
+          '<input type="checkbox" data-rej-check="' + a.id + '"' + (rejSelected.has(a.id) ? ' checked' : '') + ' title="Selecionar pra editar">' +
           media +
-          '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span><span class="rej-chip bad">' + ccEsc(rejShort(a.statusTxt)) + '</span></div>' +
+          '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span>' +
+          '<label class="rej-read"><input type="checkbox" data-rej-read="' + a.id + '"' + (read ? ' checked' : '') + '> Lido</label></div>' +
           '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
-          '<div class="rej-copy"><b>' + ccEsc(a.headline || '') + '</b> — ' + ccEsc(a.description || '') + ' <span class="cell-muted">· ' + ccEsc(a.brandName || '') + '</span></div>' +
-          '<div class="rej-reason">' + ccEsc(a.statusTxt || 'Sem motivo informado pela NewsBreak.') + '</div></div></div>';
+          '<div class="rej-copy"><b>' + ccEsc(a.headline || '') + '</b> — ' + ccEsc(a.description || '') + '</div>' +
+          '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
       }).join('');
+      list.querySelectorAll('[data-rej-read]').forEach(c => c.addEventListener('change', () => {
+        if (c.checked) rejRead.add(c.dataset.rejRead); else rejRead.delete(c.dataset.rejRead);
+        saveRejRead(); rejRecompute(); renderRejeicoes();
+      }));
       list.querySelectorAll('[data-rej-check]').forEach(c => c.addEventListener('change', () => {
         if (c.checked) rejSelected.add(c.dataset.rejCheck); else rejSelected.delete(c.dataset.rejCheck);
         renderRejeicoes();
@@ -2993,9 +3019,14 @@
     document.getElementById('rejSelCount').textContent = selVis + ' selecionado' + (selVis === 1 ? '' : 's');
     document.getElementById('rejSelAllBtn').textContent = selVis === vis.length ? 'Desmarcar todos' : 'Marcar todos (' + vis.length + ')';
     document.getElementById('rejEditBtn').disabled = !selVis;
+    document.getElementById('rejReadBtn').disabled = !selVis;
   }
 
   document.getElementById('rejRefreshBtn').addEventListener('click', () => loadRejeicoes());
+  document.getElementById('rejReadBtn').addEventListener('click', () => {
+    rejSelectedAds().forEach(a => rejRead.add(a.id));
+    rejSelected = new Set(); saveRejRead(); rejRecompute(); renderRejeicoes();
+  });
   document.getElementById('rejSelAllBtn').addEventListener('click', () => {
     const vis = rejVisible();
     const all = vis.every(a => rejSelected.has(a.id));
@@ -3006,6 +3037,9 @@
   function rejSelectedAds(){ return rejVisible().filter(a => rejSelected.has(a.id)); }
 
   function renderRejPick(){
+    try { renderRejPickInner(); } catch (e) { const n = document.getElementById('rejPickNote'); if (n) n.textContent = 'Erro ao listar a galeria: ' + e.message; }
+  }
+  function renderRejPickInner(){
     const q = document.getElementById('rejPickSearch').value.trim().toLowerCase();
     const grid = document.getElementById('rejPickGrid');
     const items = libraryItems.filter(it => itemCategory(it) !== 'logo' && (!q || it.name.toLowerCase().indexOf(q) !== -1))
@@ -3032,7 +3066,7 @@
     const ads = rejSelectedAds();
     const h = document.getElementById('rejHeadline').value.trim();
     const d = document.getElementById('rejDescription').value.trim();
-    const b = document.getElementById('rejBrand').value.trim();
+    const b = '';
     let err = '';
     if (rejPickIds.length > 1 && rejPickIds.length !== ads.length) err = 'Escolha 1 criativo (vale pra todos) ou exatamente ' + ads.length + ' (um pra cada, na ordem da lista).';
     if (!h && !d && !b && !rejPickIds.length) err = 'Preencha algum campo ou escolha um criativo.';
@@ -3050,7 +3084,7 @@
 
   function openRejSheet(){
     if (!rejSelectedAds().length) return;
-    ['rejHeadline', 'rejDescription', 'rejBrand', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
+    ['rejHeadline', 'rejDescription', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
     rejPickIds = [];
     document.getElementById('rejLog').innerHTML = '';
     document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + ' recusado' + (rejSelectedAds().length === 1 ? '' : 's');
@@ -3060,7 +3094,7 @@
   document.getElementById('rejEditBtn').addEventListener('click', openRejSheet);
   document.getElementById('rejCancel').addEventListener('click', () => { if (!rejBusy) document.getElementById('rejSheet').hidden = true; });
   document.getElementById('rejSheet').addEventListener('click', (e) => { if (e.target.id === 'rejSheet' && !rejBusy) document.getElementById('rejSheet').hidden = true; });
-  ['rejHeadline', 'rejDescription', 'rejBrand'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
+  ['rejHeadline', 'rejDescription'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
   document.getElementById('rejPickSearch').addEventListener('input', renderRejPick);
 
   function rejLog(msg, cls){
@@ -3107,7 +3141,7 @@
         if (got.headline !== creative.headline) mism.push('título');
         if (got.description !== creative.description) mism.push('descrição');
         if (got.brandName !== creative.brandName) mism.push('marca');
-        if (rejPickIds.length && got.assetUrl !== creative.assetUrl) mism.push('criativo');
+        if (rejPickIds.length && got.assetUrl === ad.assetUrl) mism.push('criativo');
         if (mism.length) throw new Error('a NewsBreak não aplicou: ' + mism.join(', '));
         if (turnOn) { await setEntityStatus(ad.accountKey, 'ad', ad.id, 'ON'); }
         rejLog(tag + 'Pronto' + (turnOn ? ' — ligado, em revisão.' : '.'), 'ok');
