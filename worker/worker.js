@@ -835,6 +835,88 @@ async function triggerSync(env) {
   return { ok: true };
 }
 
+// ---- Push alerts for rejected ads (Pushcut). Inert unless the secret PUSHCUT_URL is set on the Worker. ----
+function pushReason(txt) {
+  const raw = String(txt || "").trim();
+  const t = raw.toLowerCase();
+  if (!raw) return "motivo não informado";
+  if (/celebrit/.test(t)) return "uso de celebridade";
+  if (/sexual|adult|nudity|nude/.test(t)) return "conteúdo sexual/adulto";
+  if (/before.{0,12}after/.test(t)) return "antes e depois";
+  if (/miracle|cure|medical|health claim|weight loss/.test(t)) return "alegação de saúde";
+  if (/misleading|deceptive|clickbait|sensational/.test(t)) return "enganoso/sensacionalista";
+  if (/landing page|website|destination/.test(t)) return "página de destino";
+  if (/trademark|copyright/.test(t)) return "marca/direitos autorais";
+  const clean = raw.replace(/^violation of advertising policy\s*[-–:]\s*/i, "").split(/(?<=[.!?])\s/)[0];
+  return clean.length > 80 ? clean.slice(0, 77) + "…" : clean;
+}
+
+// campaign ON + ad set ON + ad ON + REJECTED (same rule as the Rejeições tab)
+function rejectedActiveAds(data) {
+  const out = [];
+  for (const c of (data && data.campaigns) || []) {
+    if (c.status !== "ON") continue;
+    for (const s of c.adSets || []) {
+      if (s.status !== "ON") continue;
+      for (const ad of s.ads || []) {
+        if (ad.auditStatus === "REJECTED" && ad.status === "ON") {
+          out.push({ id: ad.id, name: ad.name, account: c.adAccountName || c.accountKey, reason: pushReason(ad.statusTxt) });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+async function sendPush(env, title, text) {
+  if (!env.PUSHCUT_URL) return { ok: false, error: "not_configured" };
+  try {
+    const resp = await fetch(env.PUSHCUT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, text }),
+    });
+    const result = { ok: resp.ok, status: resp.status };
+    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+    return result;
+  } catch (e) {
+    const result = { ok: false, error: "network" };
+    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+    return result;
+  }
+}
+
+// First alert right away; then a reminder every PUSH_REPEAT_MIN minutes (default 30) while it stays rejected + active.
+async function pushRejectedAlerts(env, data) {
+  if (!env.PUSHCUT_URL) return;
+  const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
+  const now = Date.now();
+  const raw = await env.COSTS_KV.get("push_state");
+  const state = raw ? JSON.parse(raw) : {};
+  const active = rejectedActiveAds(data);
+  const next = {};
+  const fresh = [];
+  const reminders = [];
+  for (const ad of active) {
+    const prev = state[ad.id];
+    if (!prev) { fresh.push(ad); next[ad.id] = { first: now, last: now }; }
+    else if (now - prev.last >= repeatMs) { reminders.push(ad); next[ad.id] = { first: prev.first, last: now }; }
+    else next[ad.id] = prev;
+  }
+  const line = (a) => a.account + " · " + a.name + " — " + a.reason;
+  let sentOk = true;
+  if (fresh.length) {
+    const r = await sendPush(env, (fresh.length > 1 ? "Anúncios recusados (" + fresh.length + ")" : "Anúncio recusado"), fresh.slice(0, 6).map(line).join("\n"));
+    sentOk = sentOk && r.ok;
+    if (!r.ok) fresh.forEach((a) => { delete next[a.id]; }); // try again next minute
+  }
+  if (reminders.length) {
+    const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"));
+    if (!r.ok) reminders.forEach((a) => { next[a.id] = state[a.id]; });
+  }
+  await env.COSTS_KV.put("push_state", JSON.stringify(next)); // ads that left the list are forgotten, so a new rejection alerts again
+}
+
 export default {
   // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
   async scheduled(event, env, ctx) {
@@ -845,6 +927,7 @@ export default {
         const data = await computeLiveCampanhas(env);
         if (data && !(data.failedAccounts || []).length) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
+          try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
         } else {
           note = "failedAccounts:" + ((data && data.failedAccounts) || []).join(",");
         }
@@ -1580,6 +1663,13 @@ export default {
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
       }
+    }
+
+    if (url.pathname === "/push-test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const r = await sendPush(env, "Teste do aviso", "Se você viu isso, o aviso de anúncio recusado está funcionando.");
+      return json(r, 200, origin);
     }
 
     if (url.pathname === "/sync-now" && request.method === "POST") {

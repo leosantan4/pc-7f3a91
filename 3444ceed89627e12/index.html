@@ -2815,7 +2815,16 @@
         balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
     }
     if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
+    html += '<button type="button" class="bell-pop-link" id="pushTestBtn" style="display:block;">Enviar aviso de teste pro celular</button><div class="cell-muted" id="pushTestMsg" style="font-size:12px;"></div>';
     pop.innerHTML = html || '<div class="bell-pop-title">Alertas</div><div class="cell-muted">Nada de errado agora.</div>';
+    const pt = document.getElementById('pushTestBtn');
+    if (pt) pt.addEventListener('click', () => {
+      const msg = document.getElementById('pushTestMsg'); msg.textContent = 'Enviando…';
+      fetch('https://pareto-console-api.prof-leosantana.workers.dev/push-test', { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY } })
+        .then(r => r.json())
+        .then(j => { msg.textContent = j.ok ? 'Enviado! Confira o celular.' : (j.error === 'not_configured' ? 'Ainda não configurado: falta cadastrar o endereço do Pushcut no servidor.' : 'O Pushcut recusou o envio (status ' + (j.status || '?') + '). Confira o endereço cadastrado.'); })
+        .catch(() => { msg.textContent = 'Sem conexão com o servidor.'; });
+    });
     const nb = document.getElementById('enableNotifBtn');
     if (nb) nb.addEventListener('click', () => Notification.requestPermission().then(() => renderBell()));
     pop.querySelectorAll('[data-goto-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.gotoView; savePref('view', view); pop.hidden = true; renderAll(); }));
