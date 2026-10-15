@@ -195,7 +195,12 @@
   .rej-bulk{display:flex; align-items:center; gap:10px; font-size:13px; font-weight:600;}
   .rej-edit-btn{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;}
   .rej-row{display:grid; grid-template-columns:24px 64px minmax(0,1fr); gap:14px; align-items:start; padding:14px 18px; border-top:1px solid var(--line);}
-  .rej-row.sel{background:color-mix(in srgb, var(--accent) 7%, transparent);}
+  .rej-row.sel{background:color-mix(in srgb, var(--accent) 12%, transparent); box-shadow:inset 3px 0 0 var(--accent);}
+  .rej-row-edit{margin-left:auto; border:1px solid var(--line); background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:12.5px; padding:6px 14px; border-radius:var(--radius-sm); cursor:pointer;}
+  .rej-editing{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .rej-editing-item{display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:10px; padding:5px 10px 5px 5px; font-size:13px; font-weight:650; background:var(--neutral-bg);}
+  .rej-editing-item img, .rej-editing-item video{width:34px; height:48px; border-radius:6px; object-fit:cover; background:var(--line);}
+  .rej-editing-item small{display:block; font-weight:500; color:var(--muted); font-size:11px;}
   .rej-row input[type=checkbox]{margin-top:4px; width:17px; height:17px; accent-color:var(--accent);}
   .rej-thumb{width:64px; height:92px; border-radius:8px; object-fit:cover; background:var(--neutral-bg); display:block;}
   .rej-title{font-weight:650; font-size:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
@@ -203,9 +208,6 @@
   .rej-chip.bad{background:var(--bad-bg); color:var(--bad);}
   .rej-path{font-size:12px; color:var(--muted); margin-top:3px; word-break:break-word;}
   .rej-copy{font-size:12.5px; margin-top:6px;}
-  .rej-row.read{opacity:.55;}
-  .rej-read{margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer;}
-  .rej-read input{width:15px; height:15px; accent-color:var(--accent);}
   .rej-reason{font-size:13px; font-weight:600; color:var(--bad); margin-top:6px;}
   .rej-card{max-width:640px; max-height:92vh; overflow-y:auto;}
   .rej-form{display:grid; gap:10px; margin-bottom:14px;}
@@ -706,6 +708,7 @@
   <div class="assign-sheet" id="rejSheet" hidden>
     <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
       <div class="assign-sheet-title" id="rejSheetTitle">Editar anúncios</div>
+      <div class="rej-editing" id="rejEditing"></div>
       <div class="rej-form">
         <label>Título <input type="text" id="rejHeadline" placeholder="(manter o atual)"></label>
         <label>Descrição <input type="text" id="rejDescription" placeholder="(manter a atual)"></label>
@@ -1608,7 +1611,6 @@
             <div class="rej-bulk" id="rejBulk" hidden>
               <span id="rejSelCount"></span>
               <button type="button" class="select-all-btn" id="rejSelAllBtn"></button>
-              <button type="button" class="select-all-btn" id="rejReadBtn">Marcar como lido</button>
               <button type="button" class="rej-edit-btn" id="rejEditBtn">Editar selecionados</button>
             </div>
           </div>
@@ -1782,6 +1784,7 @@
   document.getElementById('navExpandBtn').addEventListener('click', () => applyNavCollapsed(false));
   applyNavCollapsed(loadPref('navCollapsed', '') === '1');
 
+  let libraryItems = [];
   let view = loadPref('view', 'painel');
   let criarSource = loadPref('criarSource', '') || null;
   let scope = loadPref('scope', 'geral');
@@ -2795,14 +2798,14 @@
   function renderBell(){
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
-    const rej = (typeof rejUnread === 'function' && typeof rejAds !== 'undefined') ? rejUnread() : [];
+    const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
     const total = balAlerts.length + rej.length;
     bell.classList.toggle('idle', !total);
     document.getElementById('balanceBellCount').textContent = total;
     bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
     let html = '';
     if (rej.length) {
-      html += '<div class="bell-pop-title">Anúncios recusados não lidos (' + rej.length + ')</div>' +
+      html += '<div class="bell-pop-title">Anúncios recusados (' + rej.length + ')</div>' +
         rej.slice(0, 6).map(a => '<div class="bell-pop-row"><span>' + ccEsc(a.name) + ' · ' + ccEsc(a.adAccountName) + '</span><span class="cell-muted">' + ccEsc(rejReason(a.statusTxt)) + '</span></div>').join('') +
         (rej.length > 6 ? '<div class="bell-pop-row cell-muted">+' + (rej.length - 6) + ' …</div>' : '') +
         '<button type="button" class="bell-pop-link" data-goto-view="rejeicoes">Ver em Rejeições →</button>';
@@ -2932,11 +2935,6 @@
     return clean.length > 90 ? clean.slice(0, 87) + '…' : clean;
   }
 
-  // "Lido": acknowledged rejections stay in the list (dimmed) but stop notifying.
-  let rejRead = new Set((() => { try { return JSON.parse(loadPref('rejRead', '[]')); } catch { return []; } })());
-  function saveRejRead(){ savePref('rejRead', JSON.stringify([...rejRead])); }
-  function rejUnread(){ return rejAds.filter(a => !rejRead.has(a.id)); }
-
   let rejLiveLoaded = false;
   // Rejected ads that matter: campaign ON + ad set ON + ad ON (anything paused/ended no longer matters).
   function rejRecompute(){
@@ -2952,14 +2950,8 @@
         });
       });
     });
-    out.sort((x, y) => (rejRead.has(x.id) - rejRead.has(y.id)) || String(y.id).localeCompare(String(x.id)));
+    out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
     rejAds = out;
-    // an ad that left the rejected list (edited/approved) is forgotten, so a new rejection notifies again
-    if (rejLiveLoaded && (campaigns || []).length) {
-      const before = rejRead.size;
-      rejRead = new Set([...rejRead].filter(id => out.some(a => a.id === id)));
-      if (rejRead.size !== before) saveRejRead();
-    }
     rejLoaded = rejLiveLoaded;
     rejSelected = new Set([...rejSelected].filter(id => out.some(a => a.id === id)));
     renderBell();
@@ -2986,7 +2978,7 @@
       (n === 'all' ? 'Todas' : ccEsc(n)) + (n === 'all' ? ' (' + rejAds.length + ')' : ' (' + rejAds.filter(a => a.adAccountName === n).length + ')') + '</button>').join('');
     document.querySelectorAll('[data-rej-acc]').forEach(b => b.addEventListener('click', () => { rejAccFilter = b.dataset.rejAcc; renderRejeicoes(); }));
     const vis = rejVisible();
-    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') + (vis.filter(a => !rejRead.has(a.id)).length !== vis.length ? ' · ' + vis.filter(a => !rejRead.has(a.id)).length + ' não lido' + (vis.filter(a => !rejRead.has(a.id)).length === 1 ? '' : 's') : '') : '';
+    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') : '';
     const failNote = rejFailed.length ? '<div class="empty-state" style="color:var(--bad);">Não consegui ler: ' + ccEsc(rejFailed.join(' · ')) + '</div>' : '';
     if (!rejLoaded) { list.innerHTML = '<div class="empty-state">Carregando…</div>'; }
     else if (!vis.length) { list.innerHTML = failNote + '<div class="empty-state">Nenhum anúncio recusado em campanha, conjunto e anúncio ativos. 🎉</div>'; }
@@ -2994,19 +2986,19 @@
       list.innerHTML = failNote + vis.map(a => {
         const isVideo = a.creativeType === 'VIDEO';
         const media = isVideo ? '<video class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" loading="lazy">';
-        const read = rejRead.has(a.id);
-        return '<div class="rej-row' + (rejSelected.has(a.id) ? ' sel' : '') + (read ? ' read' : '') + '" data-rej-id="' + a.id + '">' +
+        return '<div class="rej-row' + (rejSelected.has(a.id) ? ' sel' : '') + '" data-rej-id="' + a.id + '">' +
           '<input type="checkbox" data-rej-check="' + a.id + '"' + (rejSelected.has(a.id) ? ' checked' : '') + ' title="Selecionar pra editar">' +
           media +
           '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span>' +
-          '<label class="rej-read"><input type="checkbox" data-rej-read="' + a.id + '"' + (read ? ' checked' : '') + '> Lido</label></div>' +
+          '<button type="button" class="rej-row-edit" data-rej-edit="' + a.id + '">Editar</button></div>' +
           '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
           '<div class="rej-copy"><b>' + ccEsc(a.headline || '') + '</b> — ' + ccEsc(a.description || '') + '</div>' +
           '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
       }).join('');
-      list.querySelectorAll('[data-rej-read]').forEach(c => c.addEventListener('change', () => {
-        if (c.checked) rejRead.add(c.dataset.rejRead); else rejRead.delete(c.dataset.rejRead);
-        saveRejRead(); rejRecompute(); renderRejeicoes();
+      list.querySelectorAll('[data-rej-edit]').forEach(b => b.addEventListener('click', () => {
+        rejSelected = new Set([b.dataset.rejEdit]);
+        renderRejeicoes();
+        openRejSheet();
       }));
       list.querySelectorAll('[data-rej-check]').forEach(c => c.addEventListener('change', () => {
         if (c.checked) rejSelected.add(c.dataset.rejCheck); else rejSelected.delete(c.dataset.rejCheck);
@@ -3019,14 +3011,9 @@
     document.getElementById('rejSelCount').textContent = selVis + ' selecionado' + (selVis === 1 ? '' : 's');
     document.getElementById('rejSelAllBtn').textContent = selVis === vis.length ? 'Desmarcar todos' : 'Marcar todos (' + vis.length + ')';
     document.getElementById('rejEditBtn').disabled = !selVis;
-    document.getElementById('rejReadBtn').disabled = !selVis;
   }
 
   document.getElementById('rejRefreshBtn').addEventListener('click', () => loadRejeicoes());
-  document.getElementById('rejReadBtn').addEventListener('click', () => {
-    rejSelectedAds().forEach(a => rejRead.add(a.id));
-    rejSelected = new Set(); saveRejRead(); rejRecompute(); renderRejeicoes();
-  });
   document.getElementById('rejSelAllBtn').addEventListener('click', () => {
     const vis = rejVisible();
     const all = vis.every(a => rejSelected.has(a.id));
@@ -3082,14 +3069,23 @@
     document.getElementById('rejApply').disabled = rejBusy || !!err || !ads.length;
   }
 
+  function ensureLibrary(){
+    if (libraryItems.length) return Promise.resolve();
+    return fetch(LIBRARY_API, { cache: 'no-store' }).then(r => r.json()).then(j => { libraryItems = j.items || []; }).catch(() => {});
+  }
+
   function openRejSheet(){
     if (!rejSelectedAds().length) return;
     ['rejHeadline', 'rejDescription', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
     rejPickIds = [];
     document.getElementById('rejLog').innerHTML = '';
     document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + ' recusado' + (rejSelectedAds().length === 1 ? '' : 's');
+    document.getElementById('rejEditing').innerHTML = rejSelectedAds().map(a => {
+      const media = a.creativeType === 'VIDEO' ? '<video src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img src="' + ccEsc(a.assetUrl) + '">';
+      return '<div class="rej-editing-item">' + media + '<span>' + ccEsc(a.name) + '<small>' + ccEsc(a.adAccountName) + '</small></span></div>';
+    }).join('');
     document.getElementById('rejSheet').hidden = false;
-    renderRejPick(); renderRejSummary();
+    ensureLibrary().then(() => { renderRejPick(); renderRejSummary(); });
   }
   document.getElementById('rejEditBtn').addEventListener('click', openRejSheet);
   document.getElementById('rejCancel').addEventListener('click', () => { if (!rejBusy) document.getElementById('rejSheet').hidden = true; });
@@ -3257,7 +3253,6 @@
   }
 
   // ---- Criar Campanha ----
-  let libraryItems = [];
   let selectedLogoLibraryId = null;
   let copyPresets = [];
   let brandPresets = [];
