@@ -1455,6 +1455,71 @@ export default {
       }
     }
 
+    if (url.pathname === "/nb/rejected-ads" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const accountKey = url.searchParams.get("accountKey");
+      try {
+        const custom = await loadCustomAccounts(env);
+        const token = await tokenForAccountKey(env, accountKey);
+        const manual = custom[accountKey] && custom[accountKey].manualAccounts;
+        const adAccounts = manual && manual.length
+          ? manual
+          : await nbGetAdAccountsForToken(token, accountKey, custom[accountKey] && custom[accountKey].orgId);
+        const perAccount = await Promise.all(adAccounts.map(async (acc) => {
+          try {
+            const [ads, campaigns, adsets] = await Promise.all([
+              nbGetList("ad", token, acc.id),
+              nbGetList("campaign", token, acc.id),
+              nbGetList("ad-set", token, acc.id),
+            ]);
+            const campName = Object.fromEntries(campaigns.map((c) => [c.id, c.name]));
+            const setName = Object.fromEntries(adsets.map((a) => [a.id, a.name]));
+            return ads
+              .filter((a) => a.auditStatus === "REJECTED" && a.onlineStatus !== "DELETED")
+              .map((a) => {
+                const c = (a.creative && a.creative.content) || {};
+                return {
+                  id: a.id, name: a.name, status: a.status, onlineStatus: a.onlineStatus, auditStatus: a.auditStatus,
+                  statusTxt: a.statusTxt || "",
+                  adAccountId: acc.id, adAccountName: acc.name,
+                  campaignId: a.campaignId, campaignName: campName[a.campaignId] || "",
+                  adSetId: a.adSetId, adSetName: setName[a.adSetId] || "",
+                  creativeType: a.creative && a.creative.type,
+                  assetUrl: c.assetUrl, headline: c.headline, description: c.description, brandName: c.brandName,
+                  callToAction: c.callToAction, clickThroughUrl: c.clickThroughUrl, logoUrl: c.logoUrl,
+                  width: c.width, height: c.height,
+                };
+              });
+          } catch (e) {
+            return { error: String(e.message || e), adAccountId: acc.id };
+          }
+        }));
+        const rejected = perAccount.filter(Array.isArray).flat();
+        const failed = perAccount.filter((x) => !Array.isArray(x));
+        return json({ rejected, failed, accounts: adAccounts.length }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_rejected_ads_failed", detail: String(e.message || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/nb/ad-update" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { accountKey, id, fields } = body;
+      if (!id || !fields || typeof fields !== "object") return json({ error: "invalid_body" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        const out = await nbApi(token, `ad/update/${id}`, { method: "PUT", body: JSON.stringify(fields) });
+        await env.COSTS_KV.delete("live_campanhas");
+        return json({ ok: true, ad: out }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_ad_update_failed", detail: String(e.message || e), nb: e.nbRaw || null }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/nb/ad" && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
