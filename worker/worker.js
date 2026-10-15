@@ -442,7 +442,7 @@ async function computeLiveCampanhas(env) {
   const custom = await loadCustomAccounts(env);
   const perAccount = await Promise.all(
     tokenEntries.map(async ([key, token]) => {
-      try {
+      const attempt = async () => {
         const manual = custom[key] && custom[key].manualAccounts;
         const extra = ["IMPRESSION"];
         const [adAccounts, campaignRows, adsetRows, adRows] = await Promise.all([
@@ -465,9 +465,17 @@ async function computeLiveCampanhas(env) {
           )
         );
         return perAdAccount.flat();
+      };
+      try {
+        return await attempt();
       } catch (e) {
-        failedAccounts.push(key);
-        return [];
+        await new Promise((r) => setTimeout(r, 500));
+        try {
+          return await attempt();
+        } catch (e2) {
+          failedAccounts.push(key);
+          return [];
+        }
       }
     })
   );
