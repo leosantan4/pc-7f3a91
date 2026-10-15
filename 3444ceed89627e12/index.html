@@ -5329,7 +5329,8 @@ function ccPreviewLines(adsets, nameOf){
       const failedAds = keys.filter(k => run.cstate[k].status !== 'ok');
       if (failedAds.length) {
         run.status = 'error';
-        run.error = failedAds.length + ' de ' + keys.length + ' anúncio(s) falharam';
+        const firstWhy = run.cstate[failedAds[0]].error;
+        run.error = failedAds.length + ' de ' + keys.length + ' anúncio(s) falharam' + (firstWhy ? ' — ' + firstWhy : '');
       } else {
         run.status = 'ok';
       }
