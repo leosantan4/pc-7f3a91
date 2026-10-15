@@ -3114,9 +3114,26 @@
   ['rejHeadline', 'rejDescription'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
   document.getElementById('rejPickSearch').addEventListener('input', renderRejPick);
 
-  function rejLog(msg, cls){
+  // Plain-language errors (the technical text stays in the tooltip).
+  function rejFriendly(raw, stage){
+    const t = String(raw || '').toLowerCase();
+    const where = stage === 'upload' ? 'ao enviar o criativo' : stage === 'update' ? 'ao atualizar o anúncio' : '';
+    if (/502|503|504|non-json|gateway|timeout|timed out|unavailable|overloaded/.test(t)) return 'A NewsBreak falhou por um instante ' + (where || 'agora') + '. Tente aplicar de novo.';
+    if (/failed to fetch|networkerror|load failed|network/.test(t)) return 'Sem conexão com o servidor. Confira a internet e tente de novo.';
+    if (/unexpected token|json/.test(t)) return 'O servidor respondeu algo inesperado ' + (where || '') + '. Tente de novo.';
+    if (/401|403|unauthorized|forbidden|permission|token|access/.test(t)) return 'A NewsBreak negou o acesso desta conta. O token da conta pode ter expirado.';
+    if (/library_item_not_found|não encontrado|not found/.test(t)) return 'Esse criativo não está mais na galeria.';
+    if (/too large|file size|exceed|size limit|too big/.test(t)) return 'O arquivo do criativo é grande demais pra NewsBreak.';
+    if (/format|mime|unsupported|content.?type|codec|aspect|resolution|dimension/.test(t)) return 'A NewsBreak não aceitou o formato/tamanho desse criativo.';
+    if (/celebrit|policy|violation/.test(t)) return 'A NewsBreak barrou o anúncio por política de conteúdo.';
+    if (/name length|headline|description|invalid|must be/.test(t)) return 'A NewsBreak não aceitou o texto (título ou descrição fora do permitido).';
+    return 'Não consegui ' + (stage === 'upload' ? 'enviar o criativo' : stage === 'update' ? 'atualizar o anúncio' : 'concluir') + '. Tente de novo; se repetir, me avise.';
+  }
+
+  function rejLog(msg, cls, rawDetail){
     const el = document.getElementById('rejLog');
     const div = document.createElement('div'); if (cls) div.className = cls; div.textContent = msg;
+    if (rawDetail) div.title = rawDetail;
     el.appendChild(div); el.scrollTop = el.scrollHeight;
   }
 
@@ -3142,7 +3159,7 @@
           if (!upCache[ck]) {
             rejLog(tag + 'Enviando criativo "' + lib.name + '"…');
             const up = await post(base + '/nb/upload-asset', { accountKey: ad.accountKey, adAccountId: ad.adAccountId, libraryId: libId, mediaName: lib.name });
-            if (up.error) throw new Error(up.detail || up.error);
+            if (up.error) { const er = new Error(up.detail || up.error); er.stage = 'upload'; throw er; }
             upCache[ck] = up.asset.assetUrl;
           }
           assetUrl = upCache[ck];
@@ -3156,13 +3173,13 @@
         };
         rejLog(tag + 'Atualizando anúncio…');
         const res = await post(base + '/nb/ad-update', { accountKey: ad.accountKey, id: ad.id, fields: { creative } });
-        if (res.error) throw new Error(res.detail || res.error);
+        if (res.error) { const er = new Error(res.detail || res.error); er.stage = 'update'; throw er; }
         // NB answers the update with the OLD snapshot of the ad, so the response can't confirm the change; confirmed below from a fresh read.
         if (turnOn) { await setEntityStatus(ad.accountKey, 'ad', ad.id, 'ON'); }
         rejLog(tag + 'Enviado pra NewsBreak.', 'ok');
         okCount++; done.add(ad.id);
       } catch (e) {
-        rejLog(tag + 'Erro: ' + e.message, 'err');
+        rejLog(tag + rejFriendly(e.message, e.stage), 'err', e.message);
       }
     }
     if (done.size) {
