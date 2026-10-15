@@ -5384,18 +5384,24 @@ function ccPreviewLines(adsets, nameOf){
     await ccRunAll(ccRuns);
   });
 
-  function loadAccountSettings(){
-    return fetch(ACCOUNT_SETTINGS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+  // A failed read (e.g. the Worker restarting for a second) must never leave the account list empty: retry.
+  function retryLater(fn, attempt){
+    return attempt < 8 ? new Promise(res => setTimeout(res, 800 * (attempt + 1))).then(() => fn(attempt + 1)) : undefined;
+  }
+  function loadAccountSettings(attempt = 0){
+    return fetch(ACCOUNT_SETTINGS_API, {cache:'no-store'}).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(json => {
+      if (!json || typeof json.settings !== 'object') throw new Error('bad payload');
       accountSettings = json.settings || {};
-    }).catch(() => {});
+    }).catch(() => retryLater(loadAccountSettings, attempt));
   }
 
-  function loadCustomAccounts(){
-    return fetch(ACCOUNTS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
-      customAccounts = json.accounts || [];
+  function loadCustomAccounts(attempt = 0){
+    return fetch(ACCOUNTS_API, {cache:'no-store'}).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(json => {
+      if (!json || !Array.isArray(json.accounts)) throw new Error('bad payload');
+      customAccounts = json.accounts;
       ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
       ensureDataKeys();
-    }).catch(() => {});
+    }).catch(() => retryLater(loadCustomAccounts, attempt));
   }
 
   function renderAccountsList(){
@@ -5567,6 +5573,13 @@ function ccPreviewLines(adsets, nameOf){
   setInterval(loadVturb, 15000);
   setInterval(loadLivePainel, 20000);
   setInterval(loadLiveCampanhas, 10000);
+  setInterval(() => {
+    if (customAccounts.length) return;
+    loadCustomAccounts().then(() => {
+      if (!customAccounts.length) return;
+      loadAccountSettings().then(() => { renderAccountsList(); loadData(); loadLivePainel(); loadLiveCampanhas(); renderAll(); });
+    });
+  }, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadLiveCampanhas(); });
   window.addEventListener('focus', () => loadLiveCampanhas());
   setInterval(loadMapaVendas, 5 * 60 * 1000);
