@@ -3037,7 +3037,7 @@
       const n = rejPickIds.indexOf(it.id);
       return '<div class="rej-pick-item' + (n !== -1 ? ' on' : '') + '" data-pick="' + it.id + '">' +
         (isVideo ? '<video src="' + url + '" muted preload="metadata"></video>' : '<img src="' + url + '" loading="lazy">') +
-        (n !== -1 ? '<b>' + (n + 1) + '</b>' : '') + '<span>' + ccEsc(it.name) + '</span></div>';
+        (n !== -1 ? '<b>' + (n + 1) + '</b>' : '') + '<span>' + ccEsc(it.name) + ' · ' + ccEsc(itemCategory(it)) + '</span></div>';
     }).join('') || '<div class="cell-muted" style="grid-column:1/-1;">Nada encontrado na galeria.</div>';
     grid.querySelectorAll('[data-pick]').forEach(el => el.addEventListener('click', () => {
       const id = el.dataset.pick; const i = rejPickIds.indexOf(id);
@@ -3154,6 +3154,7 @@
     done.forEach(id => rejSelected.delete(id));
     rejLog(okCount + ' de ' + ads.length + ' atualizados.' + (okCount < ads.length ? ' Os que falharam continuam selecionados — corrija e aplique de novo.' : ''), okCount === ads.length ? 'ok' : 'err');
     renderRejSummary();
+    document.getElementById('rejSummary').textContent = okCount === ads.length ? 'Concluído — os anúncios foram reenviados pra análise da NewsBreak.' : document.getElementById('rejSummary').textContent;
     setTimeout(() => loadRejeicoes(), 1500);
   }
   document.getElementById('rejApply').addEventListener('click', rejApplyAll);
