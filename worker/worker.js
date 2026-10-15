@@ -315,6 +315,10 @@ async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAcco
           return {
             id: ad.id, name: ad.name, status: ad.status, onlineStatus: ad.onlineStatus, auditStatus: ad.auditStatus,
             creativeType: ad.creative && ad.creative.type, assetUrl: content.assetUrl, headline: content.headline,
+            ...(ad.auditStatus === "REJECTED" ? {
+              statusTxt: ad.statusTxt || "", description: content.description, brandName: content.brandName,
+              callToAction: content.callToAction, clickThroughUrl: content.clickThroughUrl, logoUrl: content.logoUrl,
+            } : {}),
             ...nbMetricsFor(adMetrics, ad.id),
           };
         }),

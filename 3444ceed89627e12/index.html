@@ -644,9 +644,12 @@
   .bell-badge{position:absolute; top:-5px; right:-5px; min-width:19px; height:19px; padding:0 5px; border-radius:999px; background:var(--bad); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; animation:nbpulse 1.6s ease-out infinite;}
   @keyframes nbring{0%,60%,100%{transform:rotate(0);} 66%{transform:rotate(14deg);} 72%{transform:rotate(-12deg);} 78%{transform:rotate(9deg);} 84%{transform:rotate(-6deg);} 90%{transform:rotate(3deg);}}
   @keyframes nbpulse{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--bad) 60%, transparent);} 70%,100%{box-shadow:0 0 0 9px transparent;}}
-  @media (prefers-reduced-motion: reduce){ .bell-btn, .bell-badge{animation:none;} }
+  @media (prefers-reduced-motion: reduce){ .bell-btn, .bell-badge, .nav-badge{animation:none;} }
   .bell-pop{position:absolute; right:0; top:calc(100% + 8px); z-index:70; width:min(340px, 86vw); background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:12px 14px; font-size:13px;}
   .bell-pop[hidden]{display:none;}
+  .nav-badge{margin-left:auto; min-width:19px; height:19px; padding:0 6px; border-radius:999px; background:var(--bad); color:#fff; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; animation:nbpulse 1.6s ease-out infinite;}
+  .nav-badge[hidden]{display:none;}
+  .bell-pop-link{margin-top:8px; border:none; background:none; color:var(--accent); font:inherit; font-weight:700; font-size:12.5px; padding:4px 0; cursor:pointer;}
   .bell-pop-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin-bottom:8px;}
   .bell-pop-row{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid var(--line);}
   .bell-pop-row:first-of-type{border-top:none;}
@@ -683,7 +686,7 @@
     <button class="nav-item" data-view="links"><span class="ic">⛓</span>Links das contas</button>
     <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Acompanhamento</div>
-    <button class="nav-item" data-view="rejeicoes"><span class="ic">⊘</span>Rejeições</button>
+    <button class="nav-item" data-view="rejeicoes"><span class="ic">⊘</span>Rejeições<span class="nav-badge" id="rejNavBadge" hidden>0</span></button>
     <button class="nav-item" data-view="regras"><span class="ic">☰</span>Regras</button>
     <button class="nav-item" data-view="mapa"><span class="ic">◈</span>Mapa de Vendas</button>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
@@ -710,7 +713,6 @@
         <div class="rej-pick-grid" id="rejPickGrid"></div>
         <div class="cell-muted" id="rejPickNote" style="font-size:12px;"></div>
       </div>
-      <label class="rej-on"><input type="checkbox" id="rejTurnOn" checked> Ligar o anúncio depois de editar (reenvia pra revisão)</label>
       <div class="rej-summary" id="rejSummary"></div>
       <div class="rej-log" id="rejLog"></div>
       <button type="button" class="assign-sheet-close" id="rejApply">Aplicar nos selecionados</button>
@@ -2767,32 +2769,45 @@
     return new Date(Date.UTC(y,m-1,d)).getUTCDay() === 5;
   }
 
+  let balAlerts = [];
+  let balLabel = '';
   function renderAlertBanner(){
-    const banner = document.getElementById('alertBanner');
     const friday = isFriday();
     const threshold = friday ? 500 : 300;
     const results = Object.keys(subAccounts)
       .map(id => ({id, ...computeBalance(id)}))
       .filter(r => r.hasTopup && r.balance <= threshold)
       .filter(r => { const a = subAccounts[r.id]; return !a || (isAccountActive(a.accountKey) && !(ACCOUNTS.find(x => x.key === a.accountKey) || {}).createOnly); });
+    results.sort((a,b) => a.balance - b.balance);
+    balAlerts = results;
+    balLabel = friday ? 'Sexta-feira — saldo abaixo de $500' : 'Saldo baixo — abaixo de $300';
+    document.getElementById('alertBanner').hidden = true;
+    renderBell();
+  }
+  function renderBell(){
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
-    banner.hidden = true;
-    if (!results.length){
-      bell.classList.add('idle');
-      bell.title = 'Sem alertas de saldo';
-      pop.innerHTML = '<div class="bell-pop-title">Saldo</div><div class="cell-muted">Nenhuma conta ativa com saldo baixo.</div>';
-      document.title = document.title.replace(/^\(\d+\) /, '');
-      return;
+    const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
+    const total = balAlerts.length + rej.length;
+    bell.classList.toggle('idle', !total);
+    document.getElementById('balanceBellCount').textContent = total;
+    bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
+    let html = '';
+    if (rej.length) {
+      html += '<div class="bell-pop-title">Anúncios recusados (' + rej.length + ')</div>' +
+        rej.slice(0, 6).map(a => '<div class="bell-pop-row"><span>' + ccEsc(a.name) + ' · ' + ccEsc(a.adAccountName) + '</span></div>').join('') +
+        (rej.length > 6 ? '<div class="bell-pop-row cell-muted">+' + (rej.length - 6) + ' …</div>' : '') +
+        '<button type="button" class="bell-pop-link" data-goto-view="rejeicoes">Ver em Rejeições →</button>';
     }
-    bell.classList.remove('idle');
-    results.sort((a,b) => a.balance - b.balance);
-    const label = friday ? 'Sexta-feira — saldo abaixo de $500' : 'Saldo baixo — abaixo de $300';
-    document.getElementById('balanceBellCount').textContent = results.length;
-    bell.title = label + ' (' + results.length + ')';
-    pop.innerHTML = '<div class="bell-pop-title">' + label + '</div>' +
-      results.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
-    document.title = '(' + results.length + ') ' + document.title.replace(/^\(\d+\) /, '');
+    if (balAlerts.length) {
+      html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
+        balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
+    }
+    pop.innerHTML = html || '<div class="bell-pop-title">Alertas</div><div class="cell-muted">Nada de errado agora.</div>';
+    pop.querySelectorAll('[data-goto-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.gotoView; savePref('view', view); pop.hidden = true; renderAll(); }));
+    const badge = document.getElementById('rejNavBadge');
+    if (badge) { badge.hidden = !rej.length; badge.textContent = rej.length; }
+    document.title = (total ? '(' + total + ') ' : '') + document.title.replace(/^\(\d+\) /, '');
   }
   document.getElementById('balanceBell').addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('balancePop'); pop.hidden = !pop.hidden; });
   document.addEventListener('click', (e) => { const pop = document.getElementById('balancePop'); if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
@@ -2903,32 +2918,33 @@
     return 'Política de anúncios';
   }
 
-  function loadRejeicoes(){
-    if (rejLoading) return Promise.resolve();
-    rejLoading = true;
-    document.getElementById('rejRefreshBtn').disabled = true;
-    document.getElementById('rejRefreshBtn').textContent = 'Atualizando…';
-    const accs = creatableAccounts();
-    return Promise.all(accs.map(a =>
-      fetch('https://pareto-console-api.prof-leosantana.workers.dev/nb/rejected-ads?accountKey=' + encodeURIComponent(a.key), { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' })
-        .then(r => r.json().then(j => ({ ok: r.ok, j, a })))
-        .catch(() => ({ ok: false, j: { error: 'rede' }, a }))
-    )).then(results => {
-      rejAds = []; rejFailed = [];
-      results.forEach(({ ok, j, a }) => {
-        if (!ok) { rejFailed.push(a.label + ': ' + (j.detail || j.error || 'falhou')); return; }
-        (j.rejected || []).forEach(ad => rejAds.push({ ...ad, accountKey: a.key, accountLabel: a.label }));
-        (j.failed || []).forEach(f => rejFailed.push(f.adAccountId + ': ' + f.error));
+  let rejLiveLoaded = false;
+  // Rejected ads that matter: campaign ON + ad set ON + ad ON (anything paused/ended no longer matters).
+  function rejRecompute(){
+    const out = [];
+    (campaigns || []).forEach(c => {
+      if (c.status !== 'ON') return;
+      (c.adSets || []).forEach(sx => {
+        if (sx.status !== 'ON') return;
+        (sx.ads || []).forEach(ad => {
+          if (ad.auditStatus === 'REJECTED' && ad.status === 'ON') {
+            out.push({ ...ad, accountKey: c.accountKey, adAccountId: c.adAccountId, adAccountName: c.adAccountName, campaignId: c.id, campaignName: c.name, adSetId: sx.id, adSetName: sx.name });
+          }
+        });
       });
-      rejAds.sort((x, y) => String(y.id).localeCompare(String(x.id)));
-      rejSelected = new Set([...rejSelected].filter(id => rejAds.some(a => a.id === id)));
-      rejLoaded = true;
-    }).finally(() => {
-      rejLoading = false;
-      const b = document.getElementById('rejRefreshBtn');
-      b.disabled = false; b.textContent = 'Atualizar';
-      renderRejeicoes();
     });
+    out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
+    rejAds = out;
+    rejLoaded = rejLiveLoaded;
+    rejSelected = new Set([...rejSelected].filter(id => out.some(a => a.id === id)));
+    renderBell();
+    if (view === 'rejeicoes' && !rejBusy && document.getElementById('rejSheet').hidden) renderRejeicoes();
+  }
+
+  function loadRejeicoes(){
+    const b = document.getElementById('rejRefreshBtn');
+    b.disabled = true; b.textContent = 'Atualizando…';
+    return loadLiveCampanhas().then(() => { rejRecompute(); renderRejeicoes(); }).finally(() => { b.disabled = false; b.textContent = 'Atualizar'; });
   }
 
   function rejVisible(){
@@ -2948,7 +2964,7 @@
     document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') : '';
     const failNote = rejFailed.length ? '<div class="empty-state" style="color:var(--bad);">Não consegui ler: ' + ccEsc(rejFailed.join(' · ')) + '</div>' : '';
     if (!rejLoaded) { list.innerHTML = '<div class="empty-state">Carregando…</div>'; }
-    else if (!vis.length) { list.innerHTML = failNote + '<div class="empty-state">Nenhum anúncio recusado agora. 🎉</div>'; }
+    else if (!vis.length) { list.innerHTML = failNote + '<div class="empty-state">Nenhum anúncio recusado em campanha, conjunto e anúncio ativos. 🎉</div>'; }
     else {
       list.innerHTML = failNote + vis.map(a => {
         const isVideo = a.creativeType === 'VIDEO';
@@ -3053,7 +3069,7 @@
     if (err || !ads.length || rejBusy) return;
     rejBusy = true; renderRejSummary();
     document.getElementById('rejLog').innerHTML = '';
-    const turnOn = document.getElementById('rejTurnOn').checked;
+    const turnOn = false;
     const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify(body) }).then(r => r.json());
     const base = 'https://pareto-console-api.prof-leosantana.workers.dev';
     let okCount = 0; const done = new Set();
@@ -3150,7 +3166,7 @@
     fetch(DATA_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       generatedAt = json.generatedAt;
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
-      campaigns = json.campaigns || [];
+      if ((json.campaigns || []).length || !campaigns.length) campaigns = json.campaigns || [];
       subAccounts = json.subAccounts || {};
       renderAll();
     }).catch(() => {
@@ -3189,6 +3205,8 @@
       } else if (json.campaigns) {
         campaigns = json.campaigns;
       }
+      rejLiveLoaded = true;
+      rejRecompute();
       const active = document.activeElement;
       if (active && active.matches && active.matches('[data-adset-budget], #campAccSel')) return;
       renderCampanhas();
