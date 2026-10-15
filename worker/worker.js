@@ -780,23 +780,31 @@ function stripMetadataBytes(bytes, contentType) {
 }
 
 async function nbUploadAsset(token, { adAccountId, bytes, filename, contentType, mediaName }) {
-  const form = new FormData();
-  form.append("asset", new Blob([bytes], { type: contentType }), filename);
-  form.append("adAccountId", adAccountId);
-  if (mediaName) {
-    form.append("saveToMediaLibrary", "true");
-    form.append("mediaName", mediaName);
+  // NewsBreak sometimes answers with a gateway error (502 / non-JSON) for a perfectly good upload:
+  // retry those transport failures (not real NB errors) a couple of times, rebuilding the form each time.
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const form = new FormData();
+    form.append("asset", new Blob([bytes], { type: contentType }), filename);
+    form.append("adAccountId", adAccountId);
+    if (mediaName) {
+      form.append("saveToMediaLibrary", "true");
+      form.append("mediaName", mediaName);
+    }
+    try {
+      return await nbApi(token, "ad/uploadAssets", { method: "POST", body: form });
+    } catch (e) {
+      // NewsBreak rejects re-uploading identical content to the same ad account,
+      // but still hands back the existing asset's url/id in the error payload —
+      // reuse it instead of failing, since the user legitimately reuses creatives.
+      const existing = e.nbRaw && e.nbRaw.data;
+      if (existing && existing.assetUrl) return existing;
+      if (e.nbRaw) throw e; // a real NB answer: don't retry
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
   }
-  try {
-    return await nbApi(token, "ad/uploadAssets", { method: "POST", body: form });
-  } catch (e) {
-    // NewsBreak rejects re-uploading identical content to the same ad account,
-    // but still hands back the existing asset's url/id in the error payload —
-    // reuse it instead of failing, since the user legitimately reuses creatives.
-    const existing = e.nbRaw && e.nbRaw.data;
-    if (existing && existing.assetUrl) return existing;
-    throw e;
-  }
+  throw lastErr;
 }
 
 async function triggerSync(env) {
@@ -1542,7 +1550,16 @@ export default {
       if (!id || !fields || typeof fields !== "object") return json({ error: "invalid_body" }, 400, origin);
       try {
         const token = await tokenForAccountKey(env, accountKey);
-        const out = await nbApi(token, `ad/update/${id}`, { method: "PUT", body: JSON.stringify(fields) });
+        let out;
+        for (let attempt = 0; ; attempt++) {
+          try {
+            out = await nbApi(token, `ad/update/${id}`, { method: "PUT", body: JSON.stringify(fields) });
+            break;
+          } catch (err) {
+            if (err.nbRaw || attempt >= 2) throw err;
+            await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+          }
+        }
         await env.COSTS_KV.delete("live_campanhas");
         return json({ ok: true, ad: out }, 200, origin);
       } catch (e) {
