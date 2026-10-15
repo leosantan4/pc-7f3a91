@@ -828,6 +828,17 @@ async function triggerSync(env) {
 }
 
 export default {
+  // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try {
+        const data = await computeLiveCampanhas(env);
+        if (data && !(data.failedAccounts || []).length) {
+          await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
+        }
+      } catch (e) {}
+    })());
+  },
   async fetch(request, env) {
     const origin = env.ALLOWED_ORIGIN;
     const url = new URL(request.url);
@@ -868,7 +879,7 @@ export default {
 
     if (url.pathname === "/live/campanhas" && request.method === "GET") {
       try {
-        const data = await getCached(env, "live_campanhas", 25, () => computeLiveCampanhas(env));
+        const data = await getCached(env, "live_campanhas", 10, () => computeLiveCampanhas(env));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "live_campanhas_failed" }, 502, origin);

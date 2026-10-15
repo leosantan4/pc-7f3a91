@@ -2814,7 +2814,10 @@
       html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
         balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
     }
+    if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
     pop.innerHTML = html || '<div class="bell-pop-title">Alertas</div><div class="cell-muted">Nada de errado agora.</div>';
+    const nb = document.getElementById('enableNotifBtn');
+    if (nb) nb.addEventListener('click', () => Notification.requestPermission().then(() => renderBell()));
     pop.querySelectorAll('[data-goto-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.gotoView; savePref('view', view); pop.hidden = true; renderAll(); }));
     const badge = document.getElementById('rejNavBadge');
     if (badge) { badge.hidden = !rej.length; badge.textContent = rej.length; }
@@ -2936,6 +2939,18 @@
   }
 
   let rejLiveLoaded = false;
+  let rejKnown = null;
+  function rejNotifyNew(fresh){
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Anúncio recusado' + (fresh.length > 1 ? 's (' + fresh.length + ')' : ''), {
+          body: fresh.slice(0, 4).map(a => a.name + ' · ' + a.adAccountName + ' — ' + rejReason(a.statusTxt)).join('\n'),
+          tag: 'pc-rejected',
+        });
+      }
+    } catch (e) {}
+  }
+
   // Rejected ads that matter: campaign ON + ad set ON + ad ON (anything paused/ended no longer matters).
   function rejRecompute(){
     const out = [];
@@ -2951,7 +2966,13 @@
       });
     });
     out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
+    const prevIds = rejKnown;
     rejAds = out;
+    if (prevIds && rejLiveLoaded) {
+      const fresh = out.filter(a => !prevIds.has(a.id));
+      if (fresh.length) rejNotifyNew(fresh);
+    }
+    rejKnown = new Set(out.map(a => a.id));
     rejLoaded = rejLiveLoaded;
     rejSelected = new Set([...rejSelected].filter(id => out.some(a => a.id === id)));
     renderBell();
@@ -3161,6 +3182,7 @@
   // ---------- /Rejeições ----------
 
   renderAll();
+  renderRejeicoes();
   if (view === 'rejeicoes') loadRejeicoes();
   setInterval(renderLive, 30000);
 
@@ -5544,7 +5566,9 @@ function ccPreviewLines(adsets, nameOf){
   setInterval(loadCosts, 30000);
   setInterval(loadVturb, 15000);
   setInterval(loadLivePainel, 20000);
-  setInterval(loadLiveCampanhas, 20000);
+  setInterval(loadLiveCampanhas, 10000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadLiveCampanhas(); });
+  window.addEventListener('focus', () => loadLiveCampanhas());
   setInterval(loadMapaVendas, 5 * 60 * 1000);
 })();
 </script>
