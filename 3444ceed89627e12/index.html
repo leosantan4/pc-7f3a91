@@ -3157,23 +3157,29 @@
         rejLog(tag + 'Atualizando anúncio…');
         const res = await post(base + '/nb/ad-update', { accountKey: ad.accountKey, id: ad.id, fields: { creative } });
         if (res.error) throw new Error(res.detail || res.error);
-        const got = ((res.ad || {}).creative || {}).content || {};
-        const mism = [];
-        if (got.headline !== creative.headline) mism.push('título');
-        if (got.description !== creative.description) mism.push('descrição');
-        if (got.brandName !== creative.brandName) mism.push('marca');
-        if (rejPickIds.length && got.assetUrl === ad.assetUrl) mism.push('criativo');
-        if (mism.length) throw new Error('a NewsBreak não aplicou: ' + mism.join(', '));
+        // NB answers the update with the OLD snapshot of the ad, so the response can't confirm the change; confirmed below from a fresh read.
         if (turnOn) { await setEntityStatus(ad.accountKey, 'ad', ad.id, 'ON'); }
-        rejLog(tag + 'Pronto' + (turnOn ? ' — ligado, em revisão.' : '.'), 'ok');
+        rejLog(tag + 'Enviado pra NewsBreak.', 'ok');
         okCount++; done.add(ad.id);
       } catch (e) {
         rejLog(tag + 'Erro: ' + e.message, 'err');
       }
     }
+    if (done.size) {
+      rejLog('Confirmando na NewsBreak…');
+      for (let k = 0; k < 3; k++) {
+        await new Promise(r => setTimeout(r, 2500));
+        await loadLiveCampanhas();
+        if (![...done].some(id => rejAds.some(a => a.id === id))) break;
+      }
+      ads.filter(a => done.has(a.id)).forEach(a => {
+        const still = rejAds.some(x => x.id === a.id);
+        rejLog('[' + a.name + '] ' + (still ? 'ainda aparece como recusado — a NewsBreak pode levar alguns segundos; se continuar, me avise.' : 'em análise na NewsBreak ✓'), still ? '' : 'ok');
+      });
+    }
     rejBusy = false;
     done.forEach(id => rejSelected.delete(id));
-    rejLog(okCount + ' de ' + ads.length + ' atualizados.' + (okCount < ads.length ? ' Os que falharam continuam selecionados — corrija e aplique de novo.' : ''), okCount === ads.length ? 'ok' : 'err');
+    rejLog(okCount + ' de ' + ads.length + ' enviados.' + (okCount < ads.length ? ' Os que falharam continuam selecionados — corrija e aplique de novo.' : ''), okCount === ads.length ? 'ok' : 'err');
     renderRejSummary();
     document.getElementById('rejSummary').textContent = okCount === ads.length ? 'Concluído — os anúncios foram reenviados pra análise da NewsBreak.' : document.getElementById('rejSummary').textContent;
     setTimeout(() => loadRejeicoes(), 1500);
