@@ -3114,21 +3114,33 @@
   ['rejHeadline', 'rejDescription'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
   document.getElementById('rejPickSearch').addEventListener('input', renderRejPick);
 
-  // Plain-language errors (the technical text stays in the tooltip).
-  function rejFriendly(raw, stage){
-    const t = String(raw || '').toLowerCase();
-    const where = stage === 'upload' ? 'ao enviar o criativo' : stage === 'update' ? 'ao atualizar o anúncio' : '';
-    if (/502|503|504|non-json|gateway|timeout|timed out|unavailable|overloaded/.test(t)) return 'A NewsBreak falhou por um instante ' + (where || 'agora') + '. Tente aplicar de novo.';
+  // Plain-language errors (the technical text stays in the tooltip). Used by Rejeições and Criar Campanha.
+  const FRIENDLY_WHERE = { upload: 'ao enviar o criativo', update: 'ao atualizar o anúncio', ad: 'ao criar o anúncio', adset: 'ao criar o conjunto', campaign: 'ao criar a campanha', logo: 'ao enviar o logo' };
+  function friendlyError(raw, stage){
+    const text = String(raw || '');
+    // already a readable Portuguese sentence from our own code: keep it
+    if (/[ãõáéíóúç]/i.test(text) && !/nb |http|->|undefined/i.test(text)) return text;
+    const t = text.toLowerCase();
+    const where = FRIENDLY_WHERE[stage] || '';
+    if (/502|503|504|non-json|gateway|timeout|timed out|unavailable|overloaded/.test(t)) return 'A NewsBreak falhou por um instante ' + (where || 'agora') + '. Tente de novo.';
     if (/failed to fetch|networkerror|load failed|network/.test(t)) return 'Sem conexão com o servidor. Confira a internet e tente de novo.';
     if (/unexpected token|json/.test(t)) return 'O servidor respondeu algo inesperado ' + (where || '') + '. Tente de novo.';
     if (/401|403|unauthorized|forbidden|permission|token|access/.test(t)) return 'A NewsBreak negou o acesso desta conta. O token da conta pode ter expirado.';
-    if (/library_item_not_found|não encontrado|not found/.test(t)) return 'Esse criativo não está mais na galeria.';
+    if (/quota|rate limit|too many|throttl/.test(t)) return 'Muitos pedidos seguidos pra NewsBreak. Espere um pouco e tente de novo.';
+    if (/library_item_not_found|not found/.test(t)) return 'Esse item não foi encontrado (o criativo pode ter saído da galeria).';
     if (/too large|file size|exceed|size limit|too big/.test(t)) return 'O arquivo do criativo é grande demais pra NewsBreak.';
     if (/format|mime|unsupported|content.?type|codec|aspect|resolution|dimension/.test(t)) return 'A NewsBreak não aceitou o formato/tamanho desse criativo.';
-    if (/celebrit|policy|violation/.test(t)) return 'A NewsBreak barrou o anúncio por política de conteúdo.';
-    if (/name length|headline|description|invalid|must be/.test(t)) return 'A NewsBreak não aceitou o texto (título ou descrição fora do permitido).';
-    return 'Não consegui ' + (stage === 'upload' ? 'enviar o criativo' : stage === 'update' ? 'atualizar o anúncio' : 'concluir') + '. Tente de novo; se repetir, me avise.';
+    if (/budget|bid/.test(t)) return 'A NewsBreak não aceitou o orçamento ou o lance informado.';
+    if (/starttime|endtime|start time|end time|schedule/.test(t)) return 'A NewsBreak não aceitou a data/hora de início ou fim.';
+    if (/tracking/.test(t)) return 'Não achei o tracking id dessa conta de anúncios.';
+    if (/duplicate|already exist/.test(t)) return 'Já existe algo com esse nome na conta.';
+    if (/name length|name must|name is/.test(t)) return 'A NewsBreak não aceitou o nome (muito curto ou muito longo; mínimo 3 caracteres).';
+    if (/clickthrough|click through|url|link/.test(t)) return 'A NewsBreak não aceitou o link do anúncio.';
+    if (/celebrit|policy|violation/.test(t)) return 'A NewsBreak barrou o conteúdo por política de anúncios.';
+    if (/headline|description|invalid|must be/.test(t)) return 'A NewsBreak não aceitou o texto (título ou descrição fora do permitido).';
+    return 'Não consegui concluir' + (where ? ' ' + where : '') + '. Tente de novo; se repetir, me avise.';
   }
+  const rejFriendly = friendlyError;
 
   function rejLog(msg, cls, rawDetail){
     const el = document.getElementById('rejLog');
@@ -5028,12 +5040,13 @@ function ccPreviewLines(adsets, nameOf){
 
   let ccErrorCount = 0;
 
-  function ccLog(msg, cls){
+  function ccLog(msg, cls, rawDetail){
     document.getElementById('ccProgressWrap').hidden = false;
     const el = document.getElementById('ccLog');
     const line = document.createElement('div');
     if (cls) line.className = cls;
     line.textContent = msg;
+    if (rawDetail) line.title = rawDetail;
     el.appendChild(line);
     el.scrollTop = el.scrollHeight;
 
@@ -5218,7 +5231,7 @@ function ccPreviewLines(adsets, nameOf){
       if (!run.campaignId) {
         ccLog(prefix + 'Criando campanha…');
         const campResp = await post(NB_CAMPAIGN_API, { accountKey: acc.accountKey, adAccountId: acc.id, name: shared.name, objective: 'WEB_CONVERSION', status: 'ON' });
-        if (campResp.error) throw new Error(campResp.detail || campResp.error);
+        if (campResp.error) { const er = new Error(campResp.detail || campResp.error); er.stage = 'campaign'; throw er; }
         run.campaignId = campResp.campaign.id;
         ccLog(prefix + 'Campanha criada (id ' + run.campaignId + ').', 'ok');
         step();
@@ -5254,13 +5267,14 @@ function ccPreviewLines(adsets, nameOf){
           try {
             ccLog(aPrefix + 'Criando conjunto de anúncios…');
             const adSetResp = await post(NB_ADSET_API, buildAdSetBody(as.name));
-            if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
+            if (adSetResp.error) { const er = new Error(adSetResp.detail || adSetResp.error); er.stage = 'adset'; throw er; }
             ast.id = adSetResp.adSet.id;
             ccLog(aPrefix + 'Conjunto criado (id ' + ast.id + ').', 'ok');
             step();
           } catch (err) {
-            ccLog(aPrefix + 'Erro ao criar o conjunto: ' + err.message, 'err');
-            as.ads.forEach((c, ai) => { const cs = run.cstate[si + '.' + ai]; cs.status = 'error'; cs.error = 'conjunto não criado: ' + err.message; });
+            const fe = friendlyError(err.message, err.stage || 'adset');
+            ccLog(aPrefix + fe, 'err', err.message);
+            as.ads.forEach((c, ai) => { const cs = run.cstate[si + '.' + ai]; cs.status = 'error'; cs.error = 'conjunto não criado: ' + fe; });
             continue;
           }
         }
@@ -5281,7 +5295,7 @@ function ccPreviewLines(adsets, nameOf){
               } else {
                 ccLog(cPrefix + 'Enviando criativo…');
                 const uploadResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name });
-                if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
+                if (uploadResp.error) { const er = new Error(uploadResp.detail || uploadResp.error); er.stage = 'upload'; throw er; }
                 cs.assetUrl = uploadResp.asset.assetUrl;
                 ccAssetCache[cacheKey] = cs.assetUrl;
                 ccLog(cPrefix + 'Criativo enviado.', 'ok');
@@ -5299,14 +5313,14 @@ function ccPreviewLines(adsets, nameOf){
             };
             ccLog(cPrefix + 'Criando anúncio…');
             const adResp = await post(NB_AD_API, adBody);
-            if (adResp.error) throw new Error(adResp.detail || adResp.error);
+            if (adResp.error) { const er = new Error(adResp.detail || adResp.error); er.stage = 'ad'; throw er; }
             ccLog(cPrefix + 'Anúncio criado (id ' + adResp.ad.id + '). Pronto.', 'ok');
             cs.status = 'ok';
             step();
           } catch (err) {
             cs.status = 'error';
-            cs.error = err.message;
-            ccLog(cPrefix + 'Erro: ' + err.message, 'err');
+            cs.error = friendlyError(err.message, err.stage);
+            ccLog(cPrefix + cs.error, 'err', err.message);
           }
         }
       }
@@ -5321,8 +5335,8 @@ function ccPreviewLines(adsets, nameOf){
       }
     } catch (err) {
       run.status = 'error';
-      run.error = err.message;
-      ccLog(prefix + 'Erro: ' + err.message, 'err');
+      run.error = friendlyError(err.message, err.stage);
+      ccLog(prefix + run.error, 'err', err.message);
     }
     renderCcRuns();
   }
