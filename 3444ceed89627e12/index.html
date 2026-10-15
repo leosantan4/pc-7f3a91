@@ -2927,7 +2927,7 @@
     if (/miracle|cure|medical|health claim|weight loss/.test(t)) return 'alegação de saúde';
     if (/misleading|deceptive|clickbait|sensational/.test(t)) return 'enganoso/sensacionalista';
     if (/landing page|website|destination|url/.test(t)) return 'página de destino';
-    if (/trademark|copyright|brand/.test(t)) return 'marca/direitos autorais';
+    if (/trademark|copyright/.test(t)) return 'marca/direitos autorais';
     const clean = raw.replace(/^violation of advertising policy\s*[-–:]\s*/i, '').split(/(?<=[.!?])\s/)[0];
     return clean.length > 90 ? clean.slice(0, 87) + '…' : clean;
   }
@@ -3111,7 +3111,7 @@
     const turnOn = false;
     const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify(body) }).then(r => r.json());
     const base = 'https://pareto-console-api.prof-leosantana.workers.dev';
-    let okCount = 0; const done = new Set();
+    let okCount = 0; const done = new Set(); const upCache = {};
     for (let i = 0; i < ads.length; i++) {
       const ad = ads[i];
       const tag = '[' + ad.name + ' · ' + ad.adAccountName + '] ';
@@ -3121,10 +3121,14 @@
           const libId = rejPickIds.length === 1 ? rejPickIds[0] : rejPickIds[i];
           const lib = libraryItems.find(x => x.id === libId);
           if (!lib) throw new Error('criativo da galeria não encontrado');
-          rejLog(tag + 'Enviando criativo "' + lib.name + '"…');
-          const up = await post(base + '/nb/upload-asset', { accountKey: ad.accountKey, adAccountId: ad.adAccountId, libraryId: libId, mediaName: lib.name });
-          if (up.error) throw new Error(up.detail || up.error);
-          assetUrl = up.asset.assetUrl;
+          const ck = ad.adAccountId + ':' + libId;
+          if (!upCache[ck]) {
+            rejLog(tag + 'Enviando criativo "' + lib.name + '"…');
+            const up = await post(base + '/nb/upload-asset', { accountKey: ad.accountKey, adAccountId: ad.adAccountId, libraryId: libId, mediaName: lib.name });
+            if (up.error) throw new Error(up.detail || up.error);
+            upCache[ck] = up.asset.assetUrl;
+          }
+          assetUrl = upCache[ck];
           type = (lib.contentType || '').indexOf('video') === 0 ? 'VIDEO' : 'IMAGE';
         }
         const creative = {
