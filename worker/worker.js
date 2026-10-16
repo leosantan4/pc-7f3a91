@@ -31,6 +31,24 @@ async function saveTopups(env, topups) {
   await env.COSTS_KV.put("topups", JSON.stringify(topups));
 }
 
+// ---- Integrations: API keys pasted in the app (KV) override the server secrets of the same name. ----
+const INTEGRATIONS = [
+  { key: "VTURB_API_TOKEN", label: "Vturb", hint: "Token da API do Vturb" },
+  { key: "REDTRACK_API_KEY", label: "RedTrack", hint: "API key do RedTrack (plataforma de vendas)" },
+];
+async function loadIntegrations(env) {
+  const raw = await env.COSTS_KV.get("integrations");
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+// env with the in-app keys layered on top (falls back to the Cloudflare secret when the app has none)
+async function keyedEnv(env) {
+  const saved = await loadIntegrations(env);
+  const e = Object.create(env);
+  for (const i of INTEGRATIONS) if (saved[i.key] && saved[i.key].value) e[i.key] = saved[i.key].value;
+  return e;
+}
+
 const VTURB_BASE = "https://analytics.vturb.net";
 const VTURB_PLAYER_ID = "6a83665cf9bdc38fd3f3718a"; // HONEY - RITUAL GATES- DICAPRIO - [42:02] - EM USO
 const VTURB_VIDEO_DURATION = 3388;
@@ -1168,7 +1186,7 @@ export default {
 
     if (url.pathname === "/vturb/stats" && request.method === "GET") {
       try {
-        const stats = await vturbStats(env);
+        const stats = await vturbStats(await keyedEnv(env));
         return json(stats, 200, origin);
       } catch (e) {
         return json({ error: "vturb_fetch_failed" }, 502, origin);
@@ -1180,7 +1198,7 @@ export default {
         const today = todayKeySaoPaulo();
         const dateFrom = url.searchParams.get("date_from") || today;
         const dateTo = url.searchParams.get("date_to") || today;
-        const data = await getCached(env, `vendas_estado:${dateFrom}:${dateTo}`, 600, () => computeVendasPorEstado(env, dateFrom, dateTo));
+        const data = await getCached(env, `vendas_estado:${dateFrom}:${dateTo}`, 600, async () => computeVendasPorEstado(await keyedEnv(env), dateFrom, dateTo));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "vendas_estado_failed", detail: String(e.message || e) }, 502, origin);
@@ -1189,7 +1207,7 @@ export default {
 
     if (url.pathname === "/live/painel" && request.method === "GET") {
       try {
-        const data = await getCached(env, "live_painel", 20, () => computeLivePainel(env));
+        const data = await getCached(env, "live_painel", 20, async () => computeLivePainel(await keyedEnv(env)));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "live_painel_failed" }, 502, origin);
@@ -1956,6 +1974,68 @@ export default {
         }, 200, origin);
       } catch (e) {
         return json({ error: "preview_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/integrations" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const saved = await loadIntegrations(env);
+      return json({ integrations: INTEGRATIONS.map((i) => ({
+        key: i.key, label: i.label, hint: i.hint,
+        source: saved[i.key] && saved[i.key].value ? "app" : (env[i.key] ? "server" : null),
+        tail: saved[i.key] && saved[i.key].value ? String(saved[i.key].value).slice(-4) : null,
+        updatedAt: saved[i.key] ? saved[i.key].updatedAt : null,
+      })) }, 200, origin);
+    }
+
+    if (url.pathname === "/integrations" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const spec = INTEGRATIONS.find((i) => i.key === (body && body.key));
+      const value = String((body && body.value) || "").trim();
+      if (!spec) return json({ error: "unknown_integration" }, 400, origin);
+      if (value.length < 8 || value.length > 400 || /\s/.test(value)) return json({ error: "value_invalid" }, 400, origin);
+      const saved = await loadIntegrations(env);
+      saved[spec.key] = { value, updatedAt: Date.now() };
+      await env.COSTS_KV.put("integrations", JSON.stringify(saved));
+      await env.COSTS_KV.delete("live_painel");
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/integrations/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const k = decodeURIComponent(url.pathname.split("/")[2] || "");
+      const saved = await loadIntegrations(env);
+      delete saved[k];
+      await env.COSTS_KV.put("integrations", JSON.stringify(saved));
+      await env.COSTS_KV.delete("live_painel");
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname === "/integrations/test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const e = await keyedEnv(env);
+      try {
+        if (body.key === "VTURB_API_TOKEN") {
+          if (!e.VTURB_API_TOKEN) return json({ ok: false, error: "not_configured" }, 200, origin);
+          await vturbStats(e);
+        } else if (body.key === "REDTRACK_API_KEY") {
+          if (!e.REDTRACK_API_KEY) return json({ ok: false, error: "not_configured" }, 200, origin);
+          const t = todayKeySaoPaulo();
+          await rtFetchReport(e, t, t);
+        } else return json({ error: "unknown_integration" }, 400, origin);
+        return json({ ok: true }, 200, origin);
+      } catch (err) {
+        const m = String((err && err.message) || err);
+        const st = (m.match(/-> (\d{3})/) || [])[1];
+        return json({ ok: false, status: st ? Number(st) : null }, 200, origin);
       }
     }
 
