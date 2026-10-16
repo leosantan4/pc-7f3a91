@@ -3142,7 +3142,11 @@
     const map = new Map();
     (allSubAccounts || []).forEach(a => map.set(a.id, { id: a.id, name: subAccountLabel(a) }));
     (campaigns || []).forEach(c => map.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName || (map.get(c.adAccountId) || {}).name || c.adAccountId }));
-    return [...map.values()].sort((x, y) => String(x.name).localeCompare(String(y.name), 'pt-BR', { numeric: true }));
+    const out = [...map.values()];
+    // two ad accounts can end in the same 3 digits: show more of the id so they can be told apart
+    const count = {}; out.forEach(o => { count[o.name] = (count[o.name] || 0) + 1; });
+    out.forEach(o => { if (count[o.name] > 1) o.name = o.name.replace(/\s*···\d+$/, '') + ' ···' + String(o.id).slice(-6); });
+    return out.sort((x, y) => String(x.name).localeCompare(String(y.name), 'pt-BR', { numeric: true }));
   }
   function ruleAccName(id){ const o = ruleAccountOptions().find(x => x.id === id); return o ? o.name : id; }
   function ruleScopeText(sc){
@@ -3277,7 +3281,7 @@
     panel.querySelector('[data-all]').addEventListener('change', (e) => { ruleSel[kind] = e.target.checked ? new Set(opts.map(o => o.id)) : new Set(); afterRuleSel(kind); });
     panel.querySelectorAll('[data-opt]').forEach(c => c.addEventListener('change', () => { if (c.checked) ruleSel[kind].add(c.dataset.opt); else ruleSel[kind].delete(c.dataset.opt); afterRuleSel(kind); }));
     const picked = opts.filter(o => sel.has(o.id));
-    document.getElementById(cfg.btn).textContent = !opts.length ? 'Nada disponível' : allOn ? cfg.all : !picked.length ? 'Nenhum(a) marcado(a)' : picked.length <= 2 ? picked.map(o => o.name).join(', ') : picked.length + ' selecionadas';
+    document.getElementById(cfg.btn).textContent = !opts.length ? 'Nada disponível' : allOn ? cfg.all : !picked.length ? 'Nenhum marcado' : picked.length <= 2 ? picked.map(o => o.name).join(', ') : picked.length + ' selecionadas';
   }
   function afterRuleSel(kind){
     if (kind !== 'camp') { ruleSel.camp = new Set(ruleOptionsCamp().map(o => o.id)); renderRuleMulti('camp'); } // contas/nichos changed: campaigns restart as "all of them"
