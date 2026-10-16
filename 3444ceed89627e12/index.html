@@ -745,11 +745,11 @@
         <label>Nome <input type="text" id="ruleName" placeholder="Ex: Gasto ≥ $80 sem checkout" maxlength="120"></label>
       </div>
       <div class="rule-block">
-        <div class="rule-block-title">Onde vale</div>
+        <div class="rule-block-title">Onde vale (vazio = tudo)</div>
         <div class="rule-grid">
           <div class="rule-lbl">Contas <div class="multi-sel" id="ruleAccBox"><button type="button" class="multi-sel-btn" id="ruleAccBtn">Todas as contas</button><div class="multi-sel-panel" id="ruleAccPanel" hidden></div></div></div>
-          <label>Campanha <select id="ruleCamp"></select></label>
-          <label>Nicho <select id="ruleNiche"></select></label>
+          <div class="rule-lbl">Nichos <div class="multi-sel" id="ruleNicheBox"><button type="button" class="multi-sel-btn" id="ruleNicheBtn">Todos os nichos</button><div class="multi-sel-panel" id="ruleNichePanel" hidden></div></div></div>
+          <div class="rule-lbl">Campanhas <div class="multi-sel" id="ruleCampBox"><button type="button" class="multi-sel-btn" id="ruleCampBtn">Todas as campanhas</button><div class="multi-sel-panel" id="ruleCampPanel" hidden></div></div></div>
         </div>
       </div>
       <div class="rule-block">
@@ -761,9 +761,10 @@
       <div class="rule-block">
         <div class="rule-block-title">Então</div>
         <div class="rule-grid">
-          <label>Ação <select id="ruleAction"><option value="pause_adset">Pausar o conjunto</option><option value="set_budget">Mudar o orçamento do conjunto (uma vez)</option><option value="notify">Só avisar (celular)</option></select></label>
+          <label>Ação <select id="ruleAction"><option value="pause_adset">Pausar o conjunto</option><option value="set_budget">Mudar o orçamento do conjunto (uma vez)</option><option value="notify">Só avisar (sem fazer nada)</option></select></label>
           <label id="ruleBudgetWrap">Novo orçamento diário $ <input type="number" id="ruleBudget" min="1" step="1" value="1000"></label>
         </div>
+        <label class="rule-notify"><input type="checkbox" id="ruleNotify" checked> Receber notificação no celular quando a regra agir</label>
       </div>
       <div class="rej-summary" id="ruleMsg"></div>
       <button type="button" class="assign-sheet-close" id="ruleSave">Salvar regra</button>
@@ -1053,6 +1054,17 @@
     .theme-toggle button{width:26px; height:26px;}
     .bell-btn{width:34px; height:34px;}
   }
+
+  /* ===== Regras: switch on/off, checkbox de aviso ===== */
+  .name-niche-row{display:flex; align-items:center; gap:10px; margin-top:8px; font-size:12.5px; color:var(--muted);}
+  .switch{position:relative; display:inline-block; width:36px; height:20px; flex:none; cursor:pointer;}
+  .switch input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1;}
+  .switch-track{position:absolute; inset:0; border-radius:999px; background:var(--line); transition:background .15s;}
+  .switch-track::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .15s;}
+  .switch input:checked + .switch-track{background:var(--accent);}
+  .switch input:checked + .switch-track::after{transform:translateX(16px);}
+  .rule-notify{display:flex; flex-direction:row; align-items:center; gap:8px; margin-top:12px; font-size:13px; font-weight:500; color:var(--ink); text-transform:none; letter-spacing:0; cursor:pointer;}
+  .rule-notify input{width:auto; accent-color:var(--accent);}
 </style>
 </defs>
 
@@ -1597,6 +1609,7 @@
               <div class="form-field span2" id="ccNameFieldWrap">
                 <label for="ccName">Nome da campanha</label>
                 <input type="text" id="ccName" placeholder="Ex: PARETO-177 - 28/09 - 1-3-1">
+                <div class="name-niche-row"><label class="switch" title="Coloca o código do nicho no começo do nome"><input type="checkbox" id="ccNicheInName" checked><span class="switch-track"></span></label><span>Incluir o nicho no nome</span></div>
               </div>
               <div class="form-field span2 cell-muted" id="ccMultiAccountNote" hidden>Várias contas marcadas — o nome de cada campanha é editado no bloco de cada conta, logo abaixo.</div>
               <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
@@ -3064,9 +3077,14 @@
 
   // ---------- Regras (rules engine UI) ----------
   const RULES_API = 'https://pareto-console-api.prof-leosantana.workers.dev/rules';
-  const RULE_METRIC_LABEL = { cost: 'Gasto ($)', ic: 'IC (checkouts)', sales: 'Vendas', cpic: 'Custo por IC ($)' };
+  const RULE_METRICS_UI = {
+    cost: { label: 'Gasto', unit: '$' }, ic: { label: 'IC (checkouts)', unit: '' }, sales: { label: 'Vendas', unit: '' }, cpic: { label: 'Custo por IC', unit: '$' },
+    cpc: { label: 'CPC', unit: '$' }, cpm: { label: 'CPM', unit: '$' }, ctr: { label: 'CTR', unit: '%' }, clicks: { label: 'Cliques', unit: '' },
+    impressions: { label: 'Impressões', unit: '' }, cpa: { label: 'CPA (custo por venda)', unit: '$' }, roas: { label: 'ROAS', unit: 'x' }, revenue: { label: 'Faturamento', unit: '$' },
+  };
   const RULE_OP_LABEL = { '>': '>', '>=': '≥', '<': '<', '<=': '≤', '=': '=' };
   let rulesData = [], rulesLog = [], rulesEngineOn = false, rulesHb = null, rulesEditing = null, rulesLoaded = false;
+  let ruleSel = { acc: new Set(), niche: new Set(), camp: new Set() };
 
   function rulesApi(path, method, body){
     return fetch(RULES_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
@@ -3076,38 +3094,42 @@
     return rulesApi().then(j => { rulesData = j.rules || []; rulesLog = j.log || []; rulesEngineOn = !!j.engineOn; rulesHb = j.heartbeat || null; rulesLoaded = true; renderRegras(); }).catch(() => { if (!rulesLoaded) { document.getElementById('rulesList').innerHTML = '<div class="empty-state">Não consegui carregar as regras agora. Tente de novo.</div>'; } });
   }
   function ruleCondText(c){
-    const v = (c.metric === 'cost' || c.metric === 'cpic') ? '$' + c.value : String(c.value);
-    return RULE_METRIC_LABEL[c.metric].replace(/ \(.*\)/, '') + ' ' + RULE_OP_LABEL[c.op] + ' ' + v;
+    const m = RULE_METRICS_UI[c.metric] || { label: c.metric, unit: '' };
+    const v = m.unit === '$' ? '$' + c.value : m.unit === '%' ? c.value + '%' : m.unit === 'x' ? c.value + 'x' : String(c.value);
+    return m.label.replace(/ \(.*\)/, '') + ' ' + RULE_OP_LABEL[c.op] + ' ' + v;
+  }
+  function scopeLists(sc){
+    return {
+      acc: (sc.adAccountIds && sc.adAccountIds.length) ? sc.adAccountIds : (sc.adAccountId ? [sc.adAccountId] : []),
+      camp: (sc.campaignIds && sc.campaignIds.length) ? sc.campaignIds : (sc.campaignId ? [sc.campaignId] : []),
+      niche: (sc.niches && sc.niches.length) ? sc.niches : (sc.niche ? [sc.niche] : []),
+    };
   }
   function ruleScopeText(sc){
-    const parts = [];
-    const ids = (sc.adAccountIds && sc.adAccountIds.length) ? sc.adAccountIds : (sc.adAccountId ? [sc.adAccountId] : []);
-    if (ids.length) {
-      const names = ids.map(id => { const c = (campaigns || []).find(x => x.adAccountId === id); return c ? c.adAccountName : id; });
-      parts.push((names.length > 1 ? 'Contas ' : 'Conta ') + names.join(', '));
-    } else if (sc.accountKey) parts.push('Conta ' + sc.accountKey);
-    if (sc.campaignId) { const c = (campaigns || []).find(x => x.id === sc.campaignId); parts.push('Campanha ' + (c ? c.name : sc.campaignId)); }
-    if (sc.niche) parts.push('Nicho ' + sc.niche);
+    const l = scopeLists(sc), parts = [];
+    if (l.acc.length) parts.push((l.acc.length > 1 ? 'Contas ' : 'Conta ') + l.acc.map(id => { const c = (campaigns || []).find(x => x.adAccountId === id); return c ? c.adAccountName : id; }).join(', '));
+    if (l.niche.length) parts.push((l.niche.length > 1 ? 'Nichos ' : 'Nicho ') + l.niche.join(', '));
+    if (l.camp.length) parts.push(l.camp.length === 1 ? 'Campanha ' + ((campaigns || []).find(x => x.id === l.camp[0]) || { name: l.camp[0] }).name : l.camp.length + ' campanhas');
     return parts.length ? parts.join(' · ') : 'Todas as contas';
   }
   function ruleActionText(a){
-    return a.type === 'pause_adset' ? 'Pausa o conjunto' : a.type === 'set_budget' ? 'Orçamento do conjunto → $' + a.budget + ' (uma vez)' : 'Só avisa no celular';
+    return a.type === 'pause_adset' ? 'Pausa o conjunto' : a.type === 'set_budget' ? 'Orçamento do conjunto → $' + a.budget + ' (uma vez)' : 'Só avisa';
   }
 
   function renderRegras(){
     const list = document.getElementById('rulesList');
     if (!list) return;
-    const eng = document.getElementById('rulesEngineBtn');
-    eng.textContent = rulesEngineOn ? 'Motor ligado — desligar' : 'Motor desligado — ligar';
+    document.getElementById('rulesEngineBtn').textContent = rulesEngineOn ? 'Motor ligado — desligar' : 'Motor desligado — ligar';
     const age = rulesHb ? Math.round((Date.now() - rulesHb.at) / 1000) : null;
     document.getElementById('rulesEngineInfo').textContent = rulesHb ? (rulesEngineOn ? '· conferiu há ' + (age < 90 ? age + 's' : Math.round(age / 60) + ' min') : '· motor parado') : '';
     list.innerHTML = rulesData.length ? rulesData.map(r =>
       '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div>' +
       '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
       '<div class="rule-line">' + r.conditions.map(c => '<span class="rule-chip">' + ccEsc(ruleCondText(c)) + '</span>').join('') +
-      '<span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">→ ' + ccEsc(ruleActionText(r.action)) + '</span></div>' +
+      '<span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">→ ' + ccEsc(ruleActionText(r.action)) + '</span>' +
+      (r.action.type !== 'notify' && r.notify !== false ? '<span class="rule-chip">avisa no celular</span>' : '') + '</div>' +
       '<div class="rule-line">' + ccEsc(ruleScopeText(r.scope || {})) + (r.margin ? ' · antecipa $' + r.margin : '') + '</div></div>' +
-      '<div class="rule-actions"><label class="rej-read" style="display:inline-flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;"><input type="checkbox" data-rule-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '> Ativa</label>' +
+      '<div class="rule-actions"><label class="switch" title="' + (r.enabled ? 'Ligada' : 'Desligada') + '"><input type="checkbox" data-rule-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label>' +
       '<button type="button" data-rule-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-rule-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'
     ).join('') : '<div class="empty-state">Nenhuma regra ainda. Clique em "Nova regra".</div>';
     list.querySelectorAll('[data-rule-toggle]').forEach(c => c.addEventListener('change', () => {
@@ -3143,82 +3165,95 @@
   });
   document.getElementById('rulesNewBtn').addEventListener('click', () => openRuleSheet(null));
 
-  // --- editor ---
-  function ruleCondRow(c){
-    return '<div class="rule-cond"><select data-cond="metric">' + Object.keys(RULE_METRIC_LABEL).map(m => '<option value="' + m + '"' + (c.metric === m ? ' selected' : '') + '>' + RULE_METRIC_LABEL[m] + '</option>').join('') + '</select>' +
-      '<select data-cond="op">' + Object.keys(RULE_OP_LABEL).map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + RULE_OP_LABEL[o] + '</option>').join('') + '</select>' +
-      '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Remover">×</button></div>';
+  // --- editor: three checkbox multi-selects (contas, nichos, campanhas) ---
+  const RULE_MULTI = {
+    acc: { btn: 'ruleAccBtn', panel: 'ruleAccPanel', all: 'Todas as contas' },
+    niche: { btn: 'ruleNicheBtn', panel: 'ruleNichePanel', all: 'Todos os nichos' },
+    camp: { btn: 'ruleCampBtn', panel: 'ruleCampPanel', all: 'Todas as campanhas' },
+  };
+  function ruleOptions(kind){
+    if (kind === 'acc') {
+      const seen = new Map();
+      (campaigns || []).forEach(c => { if (!seen.has(c.adAccountId)) seen.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName }); });
+      return [...seen.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR', { numeric: true }));
+    }
+    if (kind === 'niche') return topNiches().map(n => ({ id: n, name: n }));
+    const nicheOf = (name) => String(name || '').split(' - ')[0].trim().toUpperCase();
+    return (campaigns || []).filter(c => (!ruleSel.acc.size || ruleSel.acc.has(c.adAccountId)) && (!ruleSel.niche.size || [...ruleSel.niche].map(n => n.toUpperCase()).indexOf(nicheOf(c.name)) !== -1))
+      .slice().sort((a, b) => String(b.id).localeCompare(String(a.id))).map(c => ({ id: c.id, name: c.name }));
   }
-  let ruleAccSel = new Set();
-  function ruleSheetAccounts(){
-    const seen = new Map();
-    (campaigns || []).forEach(c => { if (!seen.has(c.adAccountId)) seen.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName, key: c.accountKey }); });
-    return [...seen.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR', { numeric: true }));
+  function renderRuleMulti(kind){
+    const cfg = RULE_MULTI[kind], opts = ruleOptions(kind), sel = ruleSel[kind];
+    const panel = document.getElementById(cfg.panel);
+    panel.innerHTML = '<label><input type="checkbox" data-all' + (!sel.size ? ' checked' : '') + '> ' + cfg.all + '</label>' +
+      opts.map(o => '<label><input type="checkbox" data-opt="' + ccEsc(o.id) + '"' + (sel.has(o.id) ? ' checked' : '') + '> ' + ccEsc(o.name) + '</label>').join('') + (opts.length ? '' : '<div class="cell-muted" style="padding:6px 8px;">Nada disponível.</div>');
+    panel.querySelector('[data-all]').addEventListener('change', () => { ruleSel[kind] = new Set(); afterRuleSel(kind); });
+    panel.querySelectorAll('[data-opt]').forEach(c => c.addEventListener('change', () => { if (c.checked) ruleSel[kind].add(c.dataset.opt); else ruleSel[kind].delete(c.dataset.opt); afterRuleSel(kind); }));
+    const names = opts.filter(o => sel.has(o.id)).map(o => o.name);
+    const extra = [...sel].filter(id => !opts.some(o => o.id === id)).length; // selected ones that the current filter hides
+    document.getElementById(cfg.btn).textContent = sel.size ? (names.concat(extra ? [extra + ' outra(s)'] : []).join(', ')) : cfg.all;
   }
-  function renderRuleAccBtn(){
-    const accs = ruleSheetAccounts().filter(a => ruleAccSel.has(a.id));
-    document.getElementById('ruleAccBtn').textContent = accs.length ? accs.map(a => a.name).join(', ') : 'Todas as contas';
-  }
-  function renderRuleAccPanel(){
-    const accs = ruleSheetAccounts();
-    const panel = document.getElementById('ruleAccPanel');
-    panel.innerHTML = '<label><input type="checkbox" data-acc-all' + (!ruleAccSel.size ? ' checked' : '') + '> Todas as contas</label>' +
-      accs.map(a => '<label><input type="checkbox" data-acc="' + ccEsc(a.id) + '"' + (ruleAccSel.has(a.id) ? ' checked' : '') + '> ' + ccEsc(a.name) + '</label>').join('');
-    panel.querySelector('[data-acc-all]').addEventListener('change', () => { ruleAccSel = new Set(); renderRuleAccPanel(); renderRuleAccBtn(); fillRuleCamps(''); });
-    panel.querySelectorAll('[data-acc]').forEach(c => c.addEventListener('change', () => {
-      if (c.checked) ruleAccSel.add(c.dataset.acc); else ruleAccSel.delete(c.dataset.acc);
-      renderRuleAccPanel(); renderRuleAccBtn(); fillRuleCamps('');
-    }));
-  }
-  function fillRuleSelects(scope){
-    ruleAccSel = new Set((scope.adAccountIds && scope.adAccountIds.length) ? scope.adAccountIds : (scope.adAccountId ? [scope.adAccountId] : []));
-    document.getElementById('ruleAccPanel').hidden = true;
-    renderRuleAccPanel(); renderRuleAccBtn();
-    fillRuleCamps(scope.campaignId || '');
-    const nSel = document.getElementById('ruleNiche');
-    nSel.innerHTML = '<option value="">Todos os nichos</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('');
-    nSel.value = scope.niche || '';
-  }
-  function fillRuleCamps(sel){
-    const cs = (campaigns || []).filter(c => !ruleAccSel.size || ruleAccSel.has(c.adAccountId)).slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
-    const cSel = document.getElementById('ruleCamp');
-    cSel.innerHTML = '<option value="">Todas as campanhas</option>' + cs.map(c => '<option value="' + ccEsc(c.id) + '">' + ccEsc(c.name) + '</option>').join('');
-    cSel.value = sel && cs.some(c => c.id === sel) ? sel : '';
+  function afterRuleSel(kind){
+    // keep the dependent lists coherent: contas/nichos narrow the campaign list
+    if (kind !== 'camp') { const ids = new Set(ruleOptions('camp').map(o => o.id)); ruleSel.camp = new Set([...ruleSel.camp].filter(id => ids.has(id))); renderRuleMulti('camp'); }
+    renderRuleMulti(kind);
   }
   function syncRuleMargin(){
     const has = [...document.querySelectorAll('#ruleConds .rule-cond')].some(r => r.querySelector('[data-cond=metric]').value === 'cost' && /^>=?$/.test(r.querySelector('[data-cond=op]').value));
     document.getElementById('ruleMarginWrap').style.display = has ? '' : 'none';
+  }
+  function ruleCondRow(c){
+    return '<div class="rule-cond"><select data-cond="metric">' + Object.keys(RULE_METRICS_UI).map(m => '<option value="' + m + '"' + (c.metric === m ? ' selected' : '') + '>' + RULE_METRICS_UI[m].label + (RULE_METRICS_UI[m].unit ? ' (' + RULE_METRICS_UI[m].unit + ')' : '') + '</option>').join('') + '</select>' +
+      '<select data-cond="op">' + Object.keys(RULE_OP_LABEL).map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + RULE_OP_LABEL[o] + '</option>').join('') + '</select>' +
+      '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Remover">×</button></div>';
   }
   function wireRuleConds(){
     const box = document.getElementById('ruleConds');
     box.querySelectorAll('select, input').forEach(el => el.addEventListener('change', syncRuleMargin));
     box.querySelectorAll('[data-cond-del]').forEach(b => b.addEventListener('click', () => { if (box.children.length > 1) { b.closest('.rule-cond').remove(); syncRuleMargin(); } }));
   }
+  function syncRuleNotify(){
+    const only = document.getElementById('ruleAction').value === 'notify';
+    const cb = document.getElementById('ruleNotify');
+    if (only) cb.checked = true;
+    cb.disabled = only;
+    document.getElementById('ruleBudgetWrap').style.display = document.getElementById('ruleAction').value === 'set_budget' ? '' : 'none';
+  }
   function openRuleSheet(rule){
     rulesEditing = rule ? rule.id : null;
-    const r = rule || { name: '', scope: {}, conditions: [{ metric: 'cost', op: '>=', value: 50 }, { metric: 'ic', op: '<', value: 1 }], margin: 0, action: { type: 'pause_adset' }, enabled: true };
+    const r = rule || { name: '', scope: {}, conditions: [{ metric: 'cost', op: '>=', value: 50 }, { metric: 'ic', op: '<', value: 1 }], margin: 0, action: { type: 'pause_adset' }, enabled: true, notify: true };
     document.getElementById('ruleSheetTitle').textContent = rule ? 'Editar regra' : 'Nova regra';
     document.getElementById('ruleName').value = r.name;
-    fillRuleSelects(r.scope || {});
+    const l = scopeLists(r.scope || {});
+    ruleSel = { acc: new Set(l.acc), niche: new Set(l.niche), camp: new Set(l.camp) };
+    Object.keys(RULE_MULTI).forEach(k => { document.getElementById(RULE_MULTI[k].panel).hidden = true; });
+    renderRuleMulti('acc'); renderRuleMulti('niche'); renderRuleMulti('camp');
     document.getElementById('ruleConds').innerHTML = r.conditions.map(ruleCondRow).join('');
     wireRuleConds();
     document.getElementById('ruleMargin').value = r.margin || 0;
     document.getElementById('ruleAction').value = r.action.type;
     document.getElementById('ruleBudget').value = r.action.budget || 1000;
-    document.getElementById('ruleBudgetWrap').style.display = r.action.type === 'set_budget' ? '' : 'none';
+    document.getElementById('ruleNotify').checked = r.notify !== false;
     document.getElementById('ruleMsg').textContent = '';
-    syncRuleMargin();
+    syncRuleMargin(); syncRuleNotify();
     document.getElementById('ruleSheet').hidden = false;
   }
-  document.getElementById('ruleAccBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ruleAccPanel'); p.hidden = !p.hidden; });
-  document.getElementById('ruleSheet').addEventListener('click', (e) => { const p = document.getElementById('ruleAccPanel'); if (!p.hidden && !document.getElementById('ruleAccBox').contains(e.target)) p.hidden = true; });
-  document.getElementById('ruleAction').addEventListener('change', (e) => { document.getElementById('ruleBudgetWrap').style.display = e.target.value === 'set_budget' ? '' : 'none'; });
+  Object.keys(RULE_MULTI).forEach(k => {
+    document.getElementById(RULE_MULTI[k].btn).addEventListener('click', (e) => {
+      e.stopPropagation();
+      Object.keys(RULE_MULTI).forEach(o => { const p = document.getElementById(RULE_MULTI[o].panel); p.hidden = o === k ? !p.hidden : true; });
+    });
+  });
+  document.getElementById('ruleSheet').addEventListener('click', (e) => {
+    if (e.target.id === 'ruleSheet') { document.getElementById('ruleSheet').hidden = true; return; }
+    if (!e.target.closest('.multi-sel')) Object.keys(RULE_MULTI).forEach(o => { document.getElementById(RULE_MULTI[o].panel).hidden = true; });
+  });
+  document.getElementById('ruleAction').addEventListener('change', syncRuleNotify);
   document.getElementById('ruleAddCond').addEventListener('click', () => {
     document.getElementById('ruleConds').insertAdjacentHTML('beforeend', ruleCondRow({ metric: 'cost', op: '>=', value: 0 }));
     wireRuleConds(); syncRuleMargin();
   });
   document.getElementById('ruleCancel').addEventListener('click', () => { document.getElementById('ruleSheet').hidden = true; });
-  document.getElementById('ruleSheet').addEventListener('click', (e) => { if (e.target.id === 'ruleSheet') document.getElementById('ruleSheet').hidden = true; });
   document.getElementById('ruleSave').addEventListener('click', () => {
     const msg = document.getElementById('ruleMsg');
     const name = document.getElementById('ruleName').value.trim();
@@ -3226,15 +3261,15 @@
     const conditions = [...document.querySelectorAll('#ruleConds .rule-cond')].map(r => ({ metric: r.querySelector('[data-cond=metric]').value, op: r.querySelector('[data-cond=op]').value, value: Number(r.querySelector('[data-cond=value]').value) }));
     if (conditions.some(c => !isFinite(c.value))) { msg.textContent = 'Confira os números das condições.'; return; }
     const scope = {};
-    if (ruleAccSel.size) scope.adAccountIds = [...ruleAccSel];
-    if (document.getElementById('ruleCamp').value) scope.campaignId = document.getElementById('ruleCamp').value;
-    if (document.getElementById('ruleNiche').value) scope.niche = document.getElementById('ruleNiche').value;
+    if (ruleSel.acc.size) scope.adAccountIds = [...ruleSel.acc];
+    if (ruleSel.niche.size) scope.niches = [...ruleSel.niche];
+    if (ruleSel.camp.size) scope.campaignIds = [...ruleSel.camp];
     const type = document.getElementById('ruleAction').value;
     const action = { type };
     if (type === 'set_budget') { action.budget = Number(document.getElementById('ruleBudget').value); if (!(action.budget >= 1)) { msg.textContent = 'Informe o novo orçamento.'; return; } }
     const existing = rulesEditing ? rulesData.find(x => x.id === rulesEditing) : null;
     msg.textContent = 'Salvando…';
-    rulesApi('', 'POST', { id: rulesEditing || undefined, name, enabled: existing ? existing.enabled : true, scope, conditions, margin: Number(document.getElementById('ruleMargin').value) || 0, action })
+    rulesApi('', 'POST', { id: rulesEditing || undefined, name, enabled: existing ? existing.enabled : true, scope, conditions, margin: Number(document.getElementById('ruleMargin').value) || 0, action, notify: type === 'notify' ? true : document.getElementById('ruleNotify').checked })
       .then(j => { rulesData = j.rules; document.getElementById('ruleSheet').hidden = true; renderRegras(); })
       .catch(e => { msg.textContent = 'Não consegui salvar (' + friendlyError(e.message) + ').'; });
   });
@@ -3834,6 +3869,7 @@
   });
 
   function renderNicheSelect(){
+    try { updateNamePlaceholder(); } catch (e) {}
     const el = document.getElementById('ccNichePills');
     if (!el) return;
     el.innerHTML = topNiches().map(n =>
@@ -4951,14 +4987,26 @@ function ccPreviewLines(adsets, nameOf){
     const m = /^([A-Za-z0-9]{1,12}) - /.exec(v || '');
     return m && topNiches().indexOf(m[1].toUpperCase()) !== -1 ? v.slice(m[0].length) : v;
   }
+  function nicheInNameOn(){ const el = document.getElementById('ccNicheInName'); return !el || el.checked; }
   function withNichePrefix(v){
     const base = stripNichePrefix(v);
-    return selectedNiche ? selectedNiche + ' - ' + base : base;
+    return selectedNiche && nicheInNameOn() ? selectedNiche + ' - ' + base : base;
+  }
+  function updateNamePlaceholder(){
+    const el = document.getElementById('ccName');
+    if (el) el.placeholder = 'Ex: ' + (selectedNiche && nicheInNameOn() ? selectedNiche + ' - ' : '') + 'PARETO-177 - 28/09 - 1-3-1';
   }
   function applyNicheToNames(){
     const nameInput = document.getElementById('ccName');
+    const accs = selectedSubAccountIds.map(id => allSubAccounts.find(a => a.id === id)).filter(Boolean);
     if (nameInput.value.trim()) nameInput.value = withNichePrefix(nameInput.value);
-    Object.keys(accountCampaigns).forEach(id => { if ((accountCampaigns[id].name || '').trim()) accountCampaigns[id].name = withNichePrefix(accountCampaigns[id].name); });
+    else if (accs.length === 1) nameInput.value = buildDefaultCampaignName(accs[0]);
+    accs.forEach(acc => {
+      if (!accountCampaigns[acc.id]) return;
+      const cur = (accountCampaigns[acc.id].name || '').trim();
+      accountCampaigns[acc.id].name = cur ? withNichePrefix(cur) : buildDefaultCampaignName(acc);
+    });
+    updateNamePlaceholder();
     renderAccountCampaignBlocks();
     renderCcSummary();
   }
@@ -5444,6 +5492,9 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   function initCriarView(){
+    const niToggle = document.getElementById('ccNicheInName');
+    niToggle.checked = loadPref('ccNicheInName', '1') !== '0';
+    niToggle.addEventListener('change', () => { savePref('ccNicheInName', niToggle.checked ? '1' : '0'); applyNicheToNames(); });
     renderStructureQuick();
     document.getElementById('criarSourceBack').addEventListener('click', () => { criarSource = null; savePref('criarSource', ''); renderPageTitle(); renderCriarSubNav(); });
     renderStartDayPills();

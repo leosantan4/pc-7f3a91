@@ -921,7 +921,7 @@ async function pushRejectedAlerts(env, data) {
 // Rules engine: evaluates every AD SET (never the campaign) on lifetime (last 30 days) metrics and acts.
 // Metrics: cost ($), ic (initiate_checkout count), sales (complete_payment count), cpic (cost / ic).
 // ---------------------------------------------------------------------------------------------
-const RULE_METRICS = ["cost", "ic", "sales", "cpic"];
+const RULE_METRICS = ["cost", "ic", "sales", "cpic", "cpc", "cpm", "ctr", "clicks", "impressions", "cpa", "roas", "revenue"];
 const RULE_OPS = [">", ">=", "<", "<=", "="];
 const RULE_ACTIONS = ["pause_adset", "set_budget", "notify"];
 const DEFAULT_RULES = [
@@ -966,9 +966,11 @@ function cleanRule(b, existingId) {
   const s = b.scope || {};
   const scope = {};
   for (const k of ["accountKey", "adAccountId", "campaignId", "niche"]) if (s[k]) scope[k] = String(s[k]).slice(0, 80);
-  if (Array.isArray(s.adAccountIds) && s.adAccountIds.length) scope.adAccountIds = s.adAccountIds.slice(0, 50).map((x) => String(x).slice(0, 80));
+  for (const k of ["adAccountIds", "campaignIds", "niches"]) {
+    if (Array.isArray(s[k]) && s[k].length) scope[k] = s[k].slice(0, 100).map((x) => String(x).slice(0, 120));
+  }
   const margin = Math.max(0, Math.min(50, Number(b.margin) || 0));
-  return { rule: { id: existingId || String(b.id || crypto.randomUUID()).slice(0, 60), name, enabled: b.enabled !== false, scope, margin, action, conditions: cleanConds } };
+  return { rule: { id: existingId || String(b.id || crypto.randomUUID()).slice(0, 60), name, enabled: b.enabled !== false, scope, margin, action, notify: b.notify !== false, conditions: cleanConds } };
 }
 
 function nicheOfName(name) {
@@ -983,6 +985,8 @@ function ruleScopeOk(scope, ctx) {
   if (Array.isArray(scope.adAccountIds) && scope.adAccountIds.length && scope.adAccountIds.indexOf(ctx.adAccountId) === -1) return false;
   if (scope.campaignId && scope.campaignId !== ctx.campaignId) return false;
   if (scope.niche && String(scope.niche).toUpperCase() !== nicheOfName(ctx.campaignName)) return false;
+  if (Array.isArray(scope.campaignIds) && scope.campaignIds.length && scope.campaignIds.indexOf(ctx.campaignId) === -1) return false;
+  if (Array.isArray(scope.niches) && scope.niches.length && scope.niches.map((n) => String(n).toUpperCase()).indexOf(nicheOfName(ctx.campaignName)) === -1) return false;
   return true;
 }
 
@@ -991,6 +995,14 @@ function ruleMetric(m, mt) {
   if (m === "ic") return mt.ic;
   if (m === "sales") return mt.venda;
   if (m === "cpic") return mt.ic > 0 ? mt.cost / mt.ic : null;
+  if (m === "cpc") return mt.click > 0 ? mt.cost / mt.click : null;
+  if (m === "cpm") return mt.impression > 0 ? (mt.cost / mt.impression) * 1000 : null;
+  if (m === "ctr") return mt.impression > 0 ? (mt.click / mt.impression) * 100 : null;
+  if (m === "clicks") return mt.click || 0;
+  if (m === "impressions") return mt.impression || 0;
+  if (m === "cpa") return mt.venda > 0 ? mt.cost / mt.venda : null;
+  if (m === "roas") return mt.cost > 0 ? (mt.faturamento || 0) / mt.cost : null;
+  if (m === "revenue") return mt.faturamento || 0;
   return null;
 }
 
@@ -1012,7 +1024,7 @@ async function fetchLifetimeAdsetMetrics(env, errs) {
   const tokens = await getAllTokens(env);
   await Promise.all(tokens.map(async ([key, token]) => {
     try {
-      const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_SET"]);
+      const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_SET"], ["IMPRESSION"]);
       const map = {};
       for (const r of rows) map[r.adSetId] = nbRowToDoc(r);
       out[key] = map;
@@ -1073,7 +1085,7 @@ async function runRulesEngine(env, data) {
       } else entry.detail = "aviso";
       state[p.rule.id + ":" + p.adsetId] = { at: Date.now(), cost: p.metrics.cost };
       const mm = "gasto $" + p.metrics.cost + ", IC " + p.metrics.ic + ", vendas " + p.metrics.sales;
-      lines.push((p.kind === "pause_adset" ? "Pausado: " : p.kind === "set_budget" ? "Orçamento $" + p.rule.action.budget + ": " : "Aviso: ") + p.accountLabel + " · " + p.adset + " — " + mm + " (" + p.rule.name + ")");
+      if (p.rule.notify !== false || p.kind === "notify") lines.push((p.kind === "pause_adset" ? "Pausado: " : p.kind === "set_budget" ? "Orçamento $" + p.rule.action.budget + ": " : "Aviso: ") + p.accountLabel + " · " + p.adset + " — " + mm + " (" + p.rule.name + ")");
     } catch (e) {
       entry.result = "erro";
       entry.detail = String((e && e.message) || e).slice(0, 200);
