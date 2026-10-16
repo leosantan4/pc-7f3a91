@@ -953,7 +953,7 @@ function cleanRule(b, existingId) {
   const cleanConds = [];
   for (const c of conditions) {
     if (!c || RULE_METRICS.indexOf(c.metric) === -1 || RULE_OPS.indexOf(c.op) === -1 || !isFinite(Number(c.value))) return { error: "condition_invalid" };
-    cleanConds.push({ metric: c.metric, op: c.op, value: Number(c.value) });
+    cleanConds.push({ metric: c.metric, op: c.op, value: Number(c.value), join: c.join === "or" ? "or" : "and" });
   }
   const a = b.action || {};
   if (RULE_ACTIONS.indexOf(a.type) === -1) return { error: "action_invalid" };
@@ -1006,16 +1006,21 @@ function ruleMetric(m, mt) {
   return null;
 }
 
+function condOk(c, mt, margin) {
+  const v = ruleMetric(c.metric, mt);
+  if (v == null) return false;
+  let th = Number(c.value);
+  if (c.metric === "cost" && (c.op === ">" || c.op === ">=")) th -= Number(margin) || 0; // act early: the NB numbers lag
+  return c.op === ">" ? v > th : c.op === ">=" ? v >= th : c.op === "<" ? v < th : c.op === "<=" ? v <= th : Math.abs(v - th) < 0.005;
+}
+
+// Conditions are chained with E (and) / OU (or); AND binds tighter than OR: "A E B OU C" = (A and B) or C.
 function ruleMatches(rule, mt) {
-  for (const c of rule.conditions) {
-    const v = ruleMetric(c.metric, mt);
-    if (v == null) return false;
-    let th = Number(c.value);
-    if (c.metric === "cost" && (c.op === ">" || c.op === ">=")) th -= Number(rule.margin) || 0; // act early: the NB numbers lag
-    const ok = c.op === ">" ? v > th : c.op === ">=" ? v >= th : c.op === "<" ? v < th : c.op === "<=" ? v <= th : Math.abs(v - th) < 0.005;
-    if (!ok) return false;
-  }
-  return true;
+  const groups = [];
+  rule.conditions.forEach((c, i) => {
+    if (i === 0 || c.join === "or") groups.push([c]); else groups[groups.length - 1].push(c);
+  });
+  return groups.some((g) => g.every((c) => condOk(c, mt, rule.margin)));
 }
 
 // Lifetime (last 30 days) metrics per ad set, per account key.

@@ -745,15 +745,15 @@
         <label>Nome <input type="text" id="ruleName" placeholder="Ex: Gasto ≥ $80 sem checkout" maxlength="120"></label>
       </div>
       <div class="rule-block">
-        <div class="rule-block-title">Onde vale (vazio = tudo)</div>
+        <div class="rule-block-title">Onde vale</div>
         <div class="rule-grid">
           <div class="rule-lbl">Contas <div class="multi-sel" id="ruleAccBox"><button type="button" class="multi-sel-btn" id="ruleAccBtn">Todas as contas</button><div class="multi-sel-panel" id="ruleAccPanel" hidden></div></div></div>
           <div class="rule-lbl">Nichos <div class="multi-sel" id="ruleNicheBox"><button type="button" class="multi-sel-btn" id="ruleNicheBtn">Todos os nichos</button><div class="multi-sel-panel" id="ruleNichePanel" hidden></div></div></div>
-          <div class="rule-lbl">Campanhas <div class="multi-sel" id="ruleCampBox"><button type="button" class="multi-sel-btn" id="ruleCampBtn">Todas as campanhas</button><div class="multi-sel-panel" id="ruleCampPanel" hidden></div></div></div>
+          <div class="rule-lbl full">Campanhas <div class="multi-sel" id="ruleCampBox"><button type="button" class="multi-sel-btn" id="ruleCampBtn">Todas as campanhas</button><div class="multi-sel-panel" id="ruleCampPanel" hidden></div></div></div>
         </div>
       </div>
       <div class="rule-block">
-        <div class="rule-block-title">Quando (todas as condições ao mesmo tempo)</div>
+        <div class="rule-block-title">Quando (E = as duas ao mesmo tempo · OU = basta uma)</div>
         <div id="ruleConds"></div>
         <button type="button" class="bell-pop-link" id="ruleAddCond">+ Adicionar condição</button>
         <label class="rule-margin" id="ruleMarginWrap">Antecipar em $ <input type="number" id="ruleMargin" min="0" max="50" step="1" value="0"> <span class="cell-muted">pausa esse valor antes do limite de gasto, porque os números da NewsBreak atrasam</span></label>
@@ -771,6 +771,12 @@
       <button type="button" class="rename-cancel" id="ruleCancel">Fechar</button>
     </div>
   </div>
+
+  <div class="side-drawer-overlay" id="rulesDrawerOverlay" hidden></div>
+  <aside class="side-drawer" id="rulesDrawer" hidden>
+    <div class="side-drawer-head"><div class="side-drawer-title" id="rulesDrawerTitle">Histórico</div><button type="button" class="side-drawer-close" id="rulesDrawerClose" aria-label="Fechar">×</button></div>
+    <div class="side-drawer-body" id="rulesDrawerBody"></div>
+  </aside>
 
   <div class="assign-sheet" id="rejSheet" hidden>
     <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
@@ -1065,6 +1071,29 @@
   .switch input:checked + .switch-track::after{transform:translateX(16px);}
   .rule-notify{display:flex; flex-direction:row; align-items:center; gap:8px; margin-top:12px; font-size:13px; font-weight:500; color:var(--ink); text-transform:none; letter-spacing:0; cursor:pointer;}
   .rule-notify input{width:auto; accent-color:var(--accent);}
+
+  /* ===== Regras v3: filtro, E/OU, painel de histórico, painéis largos ===== */
+  .rules-filters{display:flex; gap:12px; flex-wrap:wrap; padding:10px 18px; border-bottom:1px solid var(--line);}
+  .rules-filters label{display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--muted);}
+  .rules-filters select{padding:6px 9px; font-size:13px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit;}
+  .rule-join{display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.04em; color:var(--muted); margin:0 4px 0 0;}
+  .rule-if{font-size:12px; font-weight:700; color:var(--muted);}
+  .rule-cond{grid-template-columns:62px 1.3fr .8fr 1fr auto;}
+  .rule-cond > select[data-cond=join]{padding:8px 6px;}
+  .rule-grid .rule-lbl.full{grid-column:1 / -1;}
+  .multi-sel-panel{right:auto; width:max-content; min-width:100%; max-width:min(560px, 86vw);}
+  .rule-grid .multi-sel-panel label{white-space:nowrap;}
+  .side-drawer-overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:92;}
+  .side-drawer-overlay[hidden], .side-drawer[hidden]{display:none;}
+  .side-drawer{position:fixed; top:0; right:0; bottom:0; width:min(460px, 94vw); background:var(--surface-raised); border-left:1px solid var(--line); box-shadow:-16px 0 40px -12px rgba(0,0,0,.45); z-index:95; display:flex; flex-direction:column;}
+  .side-drawer-head{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 18px; border-bottom:1px solid var(--line);}
+  .side-drawer-title{font-weight:700; font-size:14px; min-width:0;}
+  .side-drawer-close{border:none; background:none; color:var(--muted); font-size:24px; line-height:1; cursor:pointer; padding:0 4px;}
+  .side-drawer-body{overflow-y:auto; padding:12px 16px 24px; display:flex; flex-direction:column; gap:10px;}
+  .log-card{border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.5;}
+  .log-card.err{border-color:var(--bad);}
+  .log-when{color:var(--muted); font-size:11.5px;}
+  .log-nums{color:var(--muted);}
 </style>
 </defs>
 
@@ -1752,20 +1781,21 @@
             <div class="step-head-left"><span class="step-title">Regras</span><span class="cell-muted" id="rulesEngineInfo"></span></div>
             <div class="rules-head-actions">
               <button type="button" class="select-all-btn" id="rulesPreviewBtn">Testar agora</button>
+              <button type="button" class="select-all-btn" id="rulesLogAllBtn">Histórico</button>
               <button type="button" class="select-all-btn" id="rulesEngineBtn"></button>
               <button type="button" class="rej-edit-btn" id="rulesNewBtn">Nova regra</button>
             </div>
             <span class="step-desc">Cada regra olha o <b>conjunto</b> (nunca a campanha), a cada minuto, com os números acumulados dos últimos 30 dias. A NewsBreak pode atrasar os números, por isso as regras de pausa podem usar uma margem pra agir um pouco antes.</span>
+          </div>
+          <div class="rules-filters">
+            <label>Conta <select id="rulesFilterAcc"></select></label>
+            <label>Nicho <select id="rulesFilterNiche"></select></label>
           </div>
           <div id="rulesList"></div>
         </section>
         <section class="panel" id="rulesPreviewPanel" hidden>
           <div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Teste agora (nada é executado)</span></div></div>
           <div id="rulesPreviewBody" class="rules-pad"></div>
-        </section>
-        <section class="panel">
-          <div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Histórico</span></div></div>
-          <div id="rulesLog"></div>
         </section>
     </div>
 
@@ -3085,6 +3115,8 @@
   const RULE_OP_LABEL = { '>': '>', '>=': '≥', '<': '<', '<=': '≤', '=': '=' };
   let rulesData = [], rulesLog = [], rulesEngineOn = false, rulesHb = null, rulesEditing = null, rulesLoaded = false;
   let ruleSel = { acc: new Set(), niche: new Set(), camp: new Set() };
+  let rulesFilter = { acc: '', niche: '' };
+  const nicheOfCampaignName = (name) => String(name || '').split(' - ')[0].trim().toUpperCase();
 
   function rulesApi(path, method, body){
     return fetch(RULES_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
@@ -3105,15 +3137,38 @@
       niche: (sc.niches && sc.niches.length) ? sc.niches : (sc.niche ? [sc.niche] : []),
     };
   }
+  // every ad account we know: the ones from the Contas screen (even without campaigns yet) + the ones seen in campaigns
+  function ruleAccountOptions(){
+    const map = new Map();
+    (allSubAccounts || []).forEach(a => map.set(a.id, { id: a.id, name: subAccountLabel(a) }));
+    (campaigns || []).forEach(c => map.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName || (map.get(c.adAccountId) || {}).name || c.adAccountId }));
+    return [...map.values()].sort((x, y) => String(x.name).localeCompare(String(y.name), 'pt-BR', { numeric: true }));
+  }
+  function ruleAccName(id){ const o = ruleAccountOptions().find(x => x.id === id); return o ? o.name : id; }
   function ruleScopeText(sc){
     const l = scopeLists(sc), parts = [];
-    if (l.acc.length) parts.push((l.acc.length > 1 ? 'Contas ' : 'Conta ') + l.acc.map(id => { const c = (campaigns || []).find(x => x.adAccountId === id); return c ? c.adAccountName : id; }).join(', '));
+    if (l.acc.length) parts.push((l.acc.length > 1 ? 'Contas ' : 'Conta ') + l.acc.map(ruleAccName).join(', '));
     if (l.niche.length) parts.push((l.niche.length > 1 ? 'Nichos ' : 'Nicho ') + l.niche.join(', '));
     if (l.camp.length) parts.push(l.camp.length === 1 ? 'Campanha ' + ((campaigns || []).find(x => x.id === l.camp[0]) || { name: l.camp[0] }).name : l.camp.length + ' campanhas');
     return parts.length ? parts.join(' · ') : 'Todas as contas';
   }
   function ruleActionText(a){
     return a.type === 'pause_adset' ? 'Pausa o conjunto' : a.type === 'set_budget' ? 'Orçamento do conjunto → $' + a.budget + ' (uma vez)' : 'Só avisa';
+  }
+  function ruleMatchesFilter(r){
+    if (!rulesFilter.acc && !rulesFilter.niche) return true;
+    const l = scopeLists(r.scope || {});
+    const camps = l.camp.map(id => (campaigns || []).find(c => c.id === id)).filter(Boolean);
+    const accOk = !rulesFilter.acc || (!l.acc.length && !camps.length) || l.acc.indexOf(rulesFilter.acc) !== -1 || camps.some(c => c.adAccountId === rulesFilter.acc);
+    const nicheOk = !rulesFilter.niche || (!l.niche.length && !camps.length) || l.niche.map(n => n.toUpperCase()).indexOf(rulesFilter.niche.toUpperCase()) !== -1 || camps.some(c => nicheOfCampaignName(c.name) === rulesFilter.niche.toUpperCase());
+    return accOk && nicheOk;
+  }
+  function renderRulesFilters(){
+    const a = document.getElementById('rulesFilterAcc'), n = document.getElementById('rulesFilterNiche');
+    a.innerHTML = '<option value="">Todas as contas</option>' + ruleAccountOptions().map(o => '<option value="' + ccEsc(o.id) + '">' + ccEsc(o.name) + '</option>').join('');
+    a.value = rulesFilter.acc;
+    n.innerHTML = '<option value="">Todos os nichos</option>' + topNiches().map(o => '<option value="' + ccEsc(o) + '">' + ccEsc(o) + '</option>').join('');
+    n.value = rulesFilter.niche;
   }
 
   function renderRegras(){
@@ -3122,30 +3177,57 @@
     document.getElementById('rulesEngineBtn').textContent = rulesEngineOn ? 'Motor ligado — desligar' : 'Motor desligado — ligar';
     const age = rulesHb ? Math.round((Date.now() - rulesHb.at) / 1000) : null;
     document.getElementById('rulesEngineInfo').textContent = rulesHb ? (rulesEngineOn ? '· conferiu há ' + (age < 90 ? age + 's' : Math.round(age / 60) + ' min') : '· motor parado') : '';
-    list.innerHTML = rulesData.length ? rulesData.map(r =>
-      '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div>' +
+    renderRulesFilters();
+    const shown = rulesData.filter(ruleMatchesFilter);
+    list.innerHTML = shown.length ? shown.map(r => {
+      const nLog = rulesLog.filter(e => e.ruleId === r.id).length;
+      return '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div>' +
       '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
-      '<div class="rule-line">' + r.conditions.map(c => '<span class="rule-chip">' + ccEsc(ruleCondText(c)) + '</span>').join('') +
-      '<span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">→ ' + ccEsc(ruleActionText(r.action)) + '</span>' +
+      '<div class="rule-line">' + r.conditions.map((c, i) => (i ? '<span class="rule-join">' + (c.join === 'or' ? 'OU' : 'E') + '</span>' : '') + '<span class="rule-chip">' + ccEsc(ruleCondText(c)) + '</span>').join('') +
+      '<span class="rule-join">→</span><span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">' + ccEsc(ruleActionText(r.action)) + '</span>' +
       (r.action.type !== 'notify' && r.notify !== false ? '<span class="rule-chip">avisa no celular</span>' : '') + '</div>' +
       '<div class="rule-line">' + ccEsc(ruleScopeText(r.scope || {})) + (r.margin ? ' · antecipa $' + r.margin : '') + '</div></div>' +
       '<div class="rule-actions"><label class="switch" title="' + (r.enabled ? 'Ligada' : 'Desligada') + '"><input type="checkbox" data-rule-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label>' +
-      '<button type="button" data-rule-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-rule-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'
-    ).join('') : '<div class="empty-state">Nenhuma regra ainda. Clique em "Nova regra".</div>';
+      '<button type="button" data-rule-log="' + ccEsc(r.id) + '">Histórico' + (nLog ? ' (' + nLog + ')' : '') + '</button>' +
+      '<button type="button" data-rule-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-rule-del="' + ccEsc(r.id) + '">Excluir</button></div></div>';
+    }).join('') : '<div class="empty-state">' + (rulesData.length ? 'Nenhuma regra com esse filtro.' : 'Nenhuma regra ainda. Clique em "Nova regra".') + '</div>';
     list.querySelectorAll('[data-rule-toggle]').forEach(c => c.addEventListener('change', () => {
       const r = rulesData.find(x => x.id === c.dataset.ruleToggle); if (!r) return;
       rulesApi('', 'POST', { ...r, enabled: c.checked }).then(j => { rulesData = j.rules; renderRegras(); }).catch(() => { c.checked = !c.checked; });
     }));
     list.querySelectorAll('[data-rule-edit]').forEach(b => b.addEventListener('click', () => openRuleSheet(rulesData.find(x => x.id === b.dataset.ruleEdit))));
+    list.querySelectorAll('[data-rule-log]').forEach(b => b.addEventListener('click', () => openRulesDrawer(b.dataset.ruleLog)));
     list.querySelectorAll('[data-rule-del]').forEach(b => b.addEventListener('click', () => {
       const r = rulesData.find(x => x.id === b.dataset.ruleDel);
       if (r && confirm('Excluir a regra "' + r.name + '"?')) rulesApi('/' + encodeURIComponent(r.id), 'DELETE').then(j => { rulesData = j.rules; renderRegras(); });
     }));
-    const lg = document.getElementById('rulesLog');
-    lg.innerHTML = rulesLog.length ? '<div class="table-scroll"><table class="rules-table"><thead><tr><th>Quando</th><th>Regra</th><th>Conjunto</th><th>Números</th><th>Resultado</th></tr></thead><tbody>' +
-      rulesLog.map(e => '<tr><td>' + ccEsc(new Date(e.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })) + '</td><td>' + ccEsc(e.ruleName) + '</td><td>' + ccEsc(e.account) + ' · ' + ccEsc(e.adset) + '</td><td>gasto $' + e.metrics.cost + ' · IC ' + e.metrics.ic + ' · vendas ' + e.metrics.sales + '</td><td class="' + (e.result === 'ok' ? '' : 'bad') + '">' + ccEsc(e.result === 'ok' ? e.detail : 'erro: ' + e.detail) + '</td></tr>').join('') +
-      '</tbody></table></div>' : '<div class="empty-state">Nenhuma ação ainda. Quando uma regra disparar, aparece aqui.</div>';
+    if (!document.getElementById('rulesDrawer').hidden) renderRulesDrawer();
   }
+
+  // --- history: hidden side panel (one rule, or all) ---
+  let rulesDrawerRule = null;
+  function renderRulesDrawer(){
+    const rule = rulesDrawerRule ? rulesData.find(r => r.id === rulesDrawerRule) : null;
+    document.getElementById('rulesDrawerTitle').textContent = rule ? 'Histórico — ' + rule.name : 'Histórico de todas as regras';
+    const entries = rulesLog.filter(e => !rulesDrawerRule || e.ruleId === rulesDrawerRule);
+    document.getElementById('rulesDrawerBody').innerHTML = entries.length ? entries.map(e =>
+      '<div class="log-card' + (e.result === 'ok' ? '' : ' err') + '"><div class="log-when">' + ccEsc(new Date(e.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })) + (rulesDrawerRule ? '' : ' · ' + ccEsc(e.ruleName)) + '</div>' +
+      '<div class="log-what"><b>' + ccEsc(e.result === 'ok' ? e.detail : 'erro: ' + e.detail) + '</b></div>' +
+      '<div class="log-where">' + ccEsc(e.account) + ' · ' + ccEsc(e.adset) + '</div>' +
+      '<div class="log-nums">gasto $' + e.metrics.cost + ' · IC ' + e.metrics.ic + ' · vendas ' + e.metrics.sales + '</div></div>').join('')
+      : '<div class="empty-state">Nenhuma ação ainda. Quando a regra disparar, aparece aqui.</div>';
+  }
+  function openRulesDrawer(ruleId){
+    rulesDrawerRule = ruleId || null;
+    renderRulesDrawer();
+    document.getElementById('rulesDrawer').hidden = false; document.getElementById('rulesDrawerOverlay').hidden = false;
+  }
+  function closeRulesDrawer(){ document.getElementById('rulesDrawer').hidden = true; document.getElementById('rulesDrawerOverlay').hidden = true; }
+  document.getElementById('rulesDrawerClose').addEventListener('click', closeRulesDrawer);
+  document.getElementById('rulesDrawerOverlay').addEventListener('click', closeRulesDrawer);
+  document.getElementById('rulesLogAllBtn').addEventListener('click', () => openRulesDrawer(null));
+  document.getElementById('rulesFilterAcc').addEventListener('change', (e) => { rulesFilter.acc = e.target.value; renderRegras(); });
+  document.getElementById('rulesFilterNiche').addEventListener('change', (e) => { rulesFilter.niche = e.target.value; renderRegras(); });
 
   document.getElementById('rulesEngineBtn').addEventListener('click', () => {
     const next = !rulesEngineOn;
@@ -3165,52 +3247,63 @@
   });
   document.getElementById('rulesNewBtn').addEventListener('click', () => openRuleSheet(null));
 
-  // --- editor: three checkbox multi-selects (contas, nichos, campanhas) ---
+  // --- editor: three checkbox multi-selects. "Todos" selects everything; untick what you don't want. ---
   const RULE_MULTI = {
-    acc: { btn: 'ruleAccBtn', panel: 'ruleAccPanel', all: 'Todas as contas' },
-    niche: { btn: 'ruleNicheBtn', panel: 'ruleNichePanel', all: 'Todos os nichos' },
-    camp: { btn: 'ruleCampBtn', panel: 'ruleCampPanel', all: 'Todas as campanhas' },
+    acc: { btn: 'ruleAccBtn', panel: 'ruleAccPanel', all: 'Todas as contas', one: 'conta' },
+    niche: { btn: 'ruleNicheBtn', panel: 'ruleNichePanel', all: 'Todos os nichos', one: 'nicho' },
+    camp: { btn: 'ruleCampBtn', panel: 'ruleCampPanel', all: 'Todas as campanhas', one: 'campanha' },
   };
   function ruleOptions(kind){
-    if (kind === 'acc') {
-      const seen = new Map();
-      (campaigns || []).forEach(c => { if (!seen.has(c.adAccountId)) seen.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName }); });
-      return [...seen.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR', { numeric: true }));
-    }
+    if (kind === 'acc') return ruleAccountOptions();
     if (kind === 'niche') return topNiches().map(n => ({ id: n, name: n }));
-    const nicheOf = (name) => String(name || '').split(' - ')[0].trim().toUpperCase();
-    return (campaigns || []).filter(c => (!ruleSel.acc.size || ruleSel.acc.has(c.adAccountId)) && (!ruleSel.niche.size || [...ruleSel.niche].map(n => n.toUpperCase()).indexOf(nicheOf(c.name)) !== -1))
-      .slice().sort((a, b) => String(b.id).localeCompare(String(a.id))).map(c => ({ id: c.id, name: c.name }));
+    return [];
   }
+  function campaignAllowed(c){
+    const nn = nicheOfCampaignName(c.name);
+    const allNiches = topNiches().every(n => ruleSel.niche.has(n));
+    // with a partial niche selection only campaigns tagged with a ticked niche can match
+    return ruleSel.acc.has(c.adAccountId) && (allNiches || ruleSel.niche.has(nn));
+  }
+  function ruleOptionsCamp(){
+    return (campaigns || []).filter(campaignAllowed).slice().sort((a, b) => String(b.id).localeCompare(String(a.id))).map(c => ({ id: c.id, name: c.name }));
+  }
+  function ruleOpts(kind){ return kind === 'camp' ? ruleOptionsCamp() : ruleOptions(kind); }
   function renderRuleMulti(kind){
-    const cfg = RULE_MULTI[kind], opts = ruleOptions(kind), sel = ruleSel[kind];
+    const cfg = RULE_MULTI[kind], opts = ruleOpts(kind), sel = ruleSel[kind];
+    const allOn = opts.length > 0 && opts.every(o => sel.has(o.id));
     const panel = document.getElementById(cfg.panel);
-    panel.innerHTML = '<label><input type="checkbox" data-all' + (!sel.size ? ' checked' : '') + '> ' + cfg.all + '</label>' +
+    panel.innerHTML = '<label><input type="checkbox" data-all' + (allOn ? ' checked' : '') + '> ' + cfg.all + '</label>' +
       opts.map(o => '<label><input type="checkbox" data-opt="' + ccEsc(o.id) + '"' + (sel.has(o.id) ? ' checked' : '') + '> ' + ccEsc(o.name) + '</label>').join('') + (opts.length ? '' : '<div class="cell-muted" style="padding:6px 8px;">Nada disponível.</div>');
-    panel.querySelector('[data-all]').addEventListener('change', () => { ruleSel[kind] = new Set(); afterRuleSel(kind); });
+    panel.querySelector('[data-all]').addEventListener('change', (e) => { ruleSel[kind] = e.target.checked ? new Set(opts.map(o => o.id)) : new Set(); afterRuleSel(kind); });
     panel.querySelectorAll('[data-opt]').forEach(c => c.addEventListener('change', () => { if (c.checked) ruleSel[kind].add(c.dataset.opt); else ruleSel[kind].delete(c.dataset.opt); afterRuleSel(kind); }));
-    const names = opts.filter(o => sel.has(o.id)).map(o => o.name);
-    const extra = [...sel].filter(id => !opts.some(o => o.id === id)).length; // selected ones that the current filter hides
-    document.getElementById(cfg.btn).textContent = sel.size ? (names.concat(extra ? [extra + ' outra(s)'] : []).join(', ')) : cfg.all;
+    const picked = opts.filter(o => sel.has(o.id));
+    document.getElementById(cfg.btn).textContent = !opts.length ? 'Nada disponível' : allOn ? cfg.all : !picked.length ? 'Nenhum(a) marcado(a)' : picked.length <= 2 ? picked.map(o => o.name).join(', ') : picked.length + ' selecionadas';
   }
   function afterRuleSel(kind){
-    // keep the dependent lists coherent: contas/nichos narrow the campaign list
-    if (kind !== 'camp') { const ids = new Set(ruleOptions('camp').map(o => o.id)); ruleSel.camp = new Set([...ruleSel.camp].filter(id => ids.has(id))); renderRuleMulti('camp'); }
+    if (kind !== 'camp') { ruleSel.camp = new Set(ruleOptionsCamp().map(o => o.id)); renderRuleMulti('camp'); } // contas/nichos changed: campaigns restart as "all of them"
     renderRuleMulti(kind);
   }
   function syncRuleMargin(){
     const has = [...document.querySelectorAll('#ruleConds .rule-cond')].some(r => r.querySelector('[data-cond=metric]').value === 'cost' && /^>=?$/.test(r.querySelector('[data-cond=op]').value));
     document.getElementById('ruleMarginWrap').style.display = has ? '' : 'none';
   }
-  function ruleCondRow(c){
-    return '<div class="rule-cond"><select data-cond="metric">' + Object.keys(RULE_METRICS_UI).map(m => '<option value="' + m + '"' + (c.metric === m ? ' selected' : '') + '>' + RULE_METRICS_UI[m].label + (RULE_METRICS_UI[m].unit ? ' (' + RULE_METRICS_UI[m].unit + ')' : '') + '</option>').join('') + '</select>' +
+  function ruleCondRow(c, first){
+    const joiner = first ? '<span class="rule-if">Se</span>' : '<select data-cond="join"><option value="and"' + (c.join !== 'or' ? ' selected' : '') + '>E</option><option value="or"' + (c.join === 'or' ? ' selected' : '') + '>OU</option></select>';
+    return '<div class="rule-cond">' + joiner + '<select data-cond="metric">' + Object.keys(RULE_METRICS_UI).map(m => '<option value="' + m + '"' + (c.metric === m ? ' selected' : '') + '>' + RULE_METRICS_UI[m].label + (RULE_METRICS_UI[m].unit ? ' (' + RULE_METRICS_UI[m].unit + ')' : '') + '</option>').join('') + '</select>' +
       '<select data-cond="op">' + Object.keys(RULE_OP_LABEL).map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + RULE_OP_LABEL[o] + '</option>').join('') + '</select>' +
       '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Remover">×</button></div>';
+  }
+  function renderRuleConds(conds){
+    document.getElementById('ruleConds').innerHTML = conds.map((c, i) => ruleCondRow(c, i === 0)).join('');
+    wireRuleConds();
+  }
+  function readRuleConds(){
+    return [...document.querySelectorAll('#ruleConds .rule-cond')].map((r, i) => ({ metric: r.querySelector('[data-cond=metric]').value, op: r.querySelector('[data-cond=op]').value, value: Number(r.querySelector('[data-cond=value]').value), join: i === 0 ? 'and' : r.querySelector('[data-cond=join]').value }));
   }
   function wireRuleConds(){
     const box = document.getElementById('ruleConds');
     box.querySelectorAll('select, input').forEach(el => el.addEventListener('change', syncRuleMargin));
-    box.querySelectorAll('[data-cond-del]').forEach(b => b.addEventListener('click', () => { if (box.children.length > 1) { b.closest('.rule-cond').remove(); syncRuleMargin(); } }));
+    box.querySelectorAll('[data-cond-del]').forEach(b => b.addEventListener('click', () => { if (box.children.length > 1) { const cs = readRuleConds(); cs.splice([...box.children].indexOf(b.closest('.rule-cond')), 1); renderRuleConds(cs); syncRuleMargin(); } }));
   }
   function syncRuleNotify(){
     const only = document.getElementById('ruleAction').value === 'notify';
@@ -3221,15 +3314,14 @@
   }
   function openRuleSheet(rule){
     rulesEditing = rule ? rule.id : null;
-    const r = rule || { name: '', scope: {}, conditions: [{ metric: 'cost', op: '>=', value: 50 }, { metric: 'ic', op: '<', value: 1 }], margin: 0, action: { type: 'pause_adset' }, enabled: true, notify: true };
+    const r = rule || { name: '', scope: {}, conditions: [{ metric: 'cost', op: '>=', value: 50, join: 'and' }, { metric: 'ic', op: '<', value: 1, join: 'and' }], margin: 0, action: { type: 'pause_adset' }, enabled: true, notify: true };
     document.getElementById('ruleSheetTitle').textContent = rule ? 'Editar regra' : 'Nova regra';
     document.getElementById('ruleName').value = r.name;
     const l = scopeLists(r.scope || {});
-    ruleSel = { acc: new Set(l.acc), niche: new Set(l.niche), camp: new Set(l.camp) };
-    Object.keys(RULE_MULTI).forEach(k => { document.getElementById(RULE_MULTI[k].panel).hidden = true; });
-    renderRuleMulti('acc'); renderRuleMulti('niche'); renderRuleMulti('camp');
-    document.getElementById('ruleConds').innerHTML = r.conditions.map(ruleCondRow).join('');
-    wireRuleConds();
+    ruleSel = { acc: new Set(l.acc.length ? l.acc : ruleAccountOptions().map(o => o.id)), niche: new Set(l.niche.length ? l.niche : topNiches()), camp: new Set() };
+    ruleSel.camp = new Set(l.camp.length ? l.camp : ruleOptionsCamp().map(o => o.id));
+    Object.keys(RULE_MULTI).forEach(k => { document.getElementById(RULE_MULTI[k].panel).hidden = true; renderRuleMulti(k); });
+    renderRuleConds(r.conditions);
     document.getElementById('ruleMargin').value = r.margin || 0;
     document.getElementById('ruleAction').value = r.action.type;
     document.getElementById('ruleBudget').value = r.action.budget || 1000;
@@ -3250,20 +3342,23 @@
   });
   document.getElementById('ruleAction').addEventListener('change', syncRuleNotify);
   document.getElementById('ruleAddCond').addEventListener('click', () => {
-    document.getElementById('ruleConds').insertAdjacentHTML('beforeend', ruleCondRow({ metric: 'cost', op: '>=', value: 0 }));
-    wireRuleConds(); syncRuleMargin();
+    const cs = readRuleConds(); cs.push({ metric: 'cost', op: '>=', value: 0, join: 'and' });
+    renderRuleConds(cs); syncRuleMargin();
   });
   document.getElementById('ruleCancel').addEventListener('click', () => { document.getElementById('ruleSheet').hidden = true; });
   document.getElementById('ruleSave').addEventListener('click', () => {
     const msg = document.getElementById('ruleMsg');
     const name = document.getElementById('ruleName').value.trim();
     if (!name) { msg.textContent = 'Dê um nome pra regra.'; return; }
-    const conditions = [...document.querySelectorAll('#ruleConds .rule-cond')].map(r => ({ metric: r.querySelector('[data-cond=metric]').value, op: r.querySelector('[data-cond=op]').value, value: Number(r.querySelector('[data-cond=value]').value) }));
+    const conditions = readRuleConds();
     if (conditions.some(c => !isFinite(c.value))) { msg.textContent = 'Confira os números das condições.'; return; }
     const scope = {};
-    if (ruleSel.acc.size) scope.adAccountIds = [...ruleSel.acc];
-    if (ruleSel.niche.size) scope.niches = [...ruleSel.niche];
-    if (ruleSel.camp.size) scope.campaignIds = [...ruleSel.camp];
+    const parts = [['acc', 'adAccountIds', 'uma conta'], ['niche', 'niches', 'um nicho'], ['camp', 'campaignIds', 'uma campanha']];
+    for (const [kind, key, label] of parts) {
+      const opts = ruleOpts(kind), picked = opts.filter(o => ruleSel[kind].has(o.id));
+      if (opts.length && !picked.length) { msg.textContent = 'Marque pelo menos ' + label + ' (ou "Todas").'; return; }
+      if (opts.length && picked.length < opts.length) scope[key] = picked.map(o => o.id);
+    }
     const type = document.getElementById('ruleAction').value;
     const action = { type };
     if (type === 'set_budget') { action.budget = Number(document.getElementById('ruleBudget').value); if (!(action.budget >= 1)) { msg.textContent = 'Informe o novo orçamento.'; return; } }
