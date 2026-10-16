@@ -917,6 +917,176 @@ async function pushRejectedAlerts(env, data) {
   await env.COSTS_KV.put("push_state", JSON.stringify(next)); // ads that left the list are forgotten, so a new rejection alerts again
 }
 
+// ---------------------------------------------------------------------------------------------
+// Rules engine: evaluates every AD SET (never the campaign) on lifetime (last 30 days) metrics and acts.
+// Metrics: cost ($), ic (initiate_checkout count), sales (complete_payment count), cpic (cost / ic).
+// ---------------------------------------------------------------------------------------------
+const RULE_METRICS = ["cost", "ic", "sales", "cpic"];
+const RULE_OPS = [">", ">=", "<", "<=", "="];
+const RULE_ACTIONS = ["pause_adset", "set_budget", "notify"];
+const DEFAULT_RULES = [
+  { id: "r1", name: "Gasto > $50 sem checkout", enabled: true, scope: {}, margin: 5, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">", value: 50 }, { metric: "ic", op: "<", value: 1 }] },
+  { id: "r2", name: "Gasto ≥ $100, IC ≤ 1, sem venda", enabled: true, scope: {}, margin: 5, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">=", value: 100 }, { metric: "ic", op: "<=", value: 1 }, { metric: "sales", op: "=", value: 0 }] },
+  { id: "r3", name: "Gasto ≥ $150 sem venda", enabled: true, scope: {}, margin: 5, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">=", value: 150 }, { metric: "sales", op: "=", value: 0 }] },
+  { id: "r5", name: "Gasto ≥ $350, 1 venda, custo/IC ≥ $75", enabled: true, scope: {}, margin: 0, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">=", value: 350 }, { metric: "sales", op: "=", value: 1 }, { metric: "cpic", op: ">=", value: 75 }] },
+  { id: "r4", name: "Escalar: gasto ≥ $10 com checkout e venda → orçamento $1000", enabled: true, scope: {}, margin: 0, action: { type: "set_budget", budget: 1000 },
+    conditions: [{ metric: "cost", op: ">=", value: 10 }, { metric: "ic", op: ">=", value: 1 }, { metric: "sales", op: ">=", value: 1 }] },
+];
+
+async function loadRules(env) {
+  const raw = await env.COSTS_KV.get("rules");
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  await env.COSTS_KV.put("rules", JSON.stringify(DEFAULT_RULES));
+  return DEFAULT_RULES.map((r) => ({ ...r }));
+}
+async function saveRules(env, rules) { await env.COSTS_KV.put("rules", JSON.stringify(rules)); }
+
+function cleanRule(b, existingId) {
+  const name = String((b && b.name) || "").trim().slice(0, 120);
+  if (!name) return { error: "name_required" };
+  const conditions = Array.isArray(b.conditions) ? b.conditions : [];
+  if (!conditions.length || conditions.length > 8) return { error: "conditions_invalid" };
+  const cleanConds = [];
+  for (const c of conditions) {
+    if (!c || RULE_METRICS.indexOf(c.metric) === -1 || RULE_OPS.indexOf(c.op) === -1 || !isFinite(Number(c.value))) return { error: "condition_invalid" };
+    cleanConds.push({ metric: c.metric, op: c.op, value: Number(c.value) });
+  }
+  const a = b.action || {};
+  if (RULE_ACTIONS.indexOf(a.type) === -1) return { error: "action_invalid" };
+  const action = { type: a.type };
+  if (a.type === "set_budget") {
+    const bud = Number(a.budget);
+    if (!isFinite(bud) || bud < 1 || bud > 100000) return { error: "budget_invalid" };
+    action.budget = bud;
+  }
+  const s = b.scope || {};
+  const scope = {};
+  for (const k of ["accountKey", "adAccountId", "campaignId", "niche"]) if (s[k]) scope[k] = String(s[k]).slice(0, 80);
+  const margin = Math.max(0, Math.min(50, Number(b.margin) || 0));
+  return { rule: { id: existingId || String(b.id || crypto.randomUUID()).slice(0, 60), name, enabled: b.enabled !== false, scope, margin, action, conditions: cleanConds } };
+}
+
+function nicheOfName(name) {
+  const m = String(name || "").split(" - ")[0].trim().toUpperCase();
+  return m;
+}
+
+function ruleScopeOk(scope, ctx) {
+  if (!scope) return true;
+  if (scope.accountKey && scope.accountKey !== ctx.accountKey) return false;
+  if (scope.adAccountId && scope.adAccountId !== ctx.adAccountId) return false;
+  if (scope.campaignId && scope.campaignId !== ctx.campaignId) return false;
+  if (scope.niche && String(scope.niche).toUpperCase() !== nicheOfName(ctx.campaignName)) return false;
+  return true;
+}
+
+function ruleMetric(m, mt) {
+  if (m === "cost") return mt.cost;
+  if (m === "ic") return mt.ic;
+  if (m === "sales") return mt.venda;
+  if (m === "cpic") return mt.ic > 0 ? mt.cost / mt.ic : null;
+  return null;
+}
+
+function ruleMatches(rule, mt) {
+  for (const c of rule.conditions) {
+    const v = ruleMetric(c.metric, mt);
+    if (v == null) return false;
+    let th = Number(c.value);
+    if (c.metric === "cost" && (c.op === ">" || c.op === ">=")) th -= Number(rule.margin) || 0; // act early: the NB numbers lag
+    const ok = c.op === ">" ? v > th : c.op === ">=" ? v >= th : c.op === "<" ? v < th : c.op === "<=" ? v <= th : Math.abs(v - th) < 0.005;
+    if (!ok) return false;
+  }
+  return true;
+}
+
+// Lifetime (last 30 days) metrics per ad set, per account key.
+async function fetchLifetimeAdsetMetrics(env, errs) {
+  const out = {};
+  const tokens = await getAllTokens(env);
+  await Promise.all(tokens.map(async ([key, token]) => {
+    try {
+      const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_SET"]);
+      const map = {};
+      for (const r of rows) map[r.adSetId] = nbRowToDoc(r);
+      out[key] = map;
+    } catch (e) { /* account unreadable this minute: its ad sets are skipped */ if (errs) errs.push(key + ': ' + String((e && e.message) || e)); }
+  }));
+  return out;
+}
+
+// Decide what every rule would do right now. Pure: does not touch NewsBreak.
+function planRules(data, life, rules, state) {
+  const plan = [];
+  let evaluated = 0;
+  const active = rules.filter((r) => r.enabled);
+  for (const c of (data && data.campaigns) || []) {
+    if (c.status !== "ON" || !life[c.accountKey]) continue;
+    for (const s of c.adSets || []) {
+      if (s.status !== "ON") continue;
+      evaluated++;
+      const mt = life[c.accountKey][s.id] || { cost: 0, ic: 0, venda: 0 };
+      const ctx = { accountKey: c.accountKey, adAccountId: c.adAccountId, campaignId: c.id, campaignName: c.name };
+      const hits = active.filter((r) => ruleScopeOk(r.scope, ctx) && ruleMatches(r, mt));
+      const done = (r) => state[r.id + ":" + s.id];
+      const base = { accountKey: c.accountKey, accountLabel: c.adAccountName || c.accountKey, campaignId: c.id, campaign: c.name, adsetId: s.id, adset: s.name,
+        metrics: { cost: mt.cost, ic: mt.ic, sales: mt.venda }, budget: s.budget, budgetType: s.budgetType };
+      // pause beats budget; notify rules are independent
+      const pause = hits.find((r) => r.action.type === "pause_adset" && (!done(r) || mt.cost >= done(r).cost + 10));
+      if (pause) plan.push({ ...base, rule: pause, kind: "pause_adset" });
+      else {
+        const budgetRule = hits.find((r) => r.action.type === "set_budget" && !done(r) && !(Number(s.budget) >= r.action.budget));
+        if (budgetRule) plan.push({ ...base, rule: budgetRule, kind: "set_budget" });
+      }
+      for (const r of hits) if (r.action.type === "notify" && !done(r)) plan.push({ ...base, rule: r, kind: "notify" });
+    }
+  }
+  return { plan, evaluated };
+}
+
+async function runRulesEngine(env, data) {
+  const on = (await env.COSTS_KV.get("rules_engine_on")) === "1";
+  if (!on) return { ran: false };
+  const rules = await loadRules(env);
+  const life = await fetchLifetimeAdsetMetrics(env);
+  const stateRaw = await env.COSTS_KV.get("rules_state");
+  const state = stateRaw ? JSON.parse(stateRaw) : {};
+  const { plan, evaluated } = planRules(data, life, rules, state);
+  const logRaw = await env.COSTS_KV.get("rules_log");
+  const log = logRaw ? JSON.parse(logRaw) : [];
+  const lines = [];
+  for (const p of plan) {
+    const entry = { at: Date.now(), ruleId: p.rule.id, ruleName: p.rule.name, accountKey: p.accountKey, account: p.accountLabel, campaign: p.campaign, adset: p.adset, adsetId: p.adsetId, metrics: p.metrics, action: p.kind, result: "ok", detail: "" };
+    try {
+      if (p.kind === "pause_adset") {
+        await nbSetAdSetStatus(await tokenForAccountKey(env, p.accountKey), p.adsetId, "OFF");
+        entry.detail = "conjunto pausado";
+      } else if (p.kind === "set_budget") {
+        await nbSetAdSetBudget(await tokenForAccountKey(env, p.accountKey), p.adsetId, Math.round(p.rule.action.budget * 100), p.budgetType || "DAILY");
+        entry.detail = "orçamento $" + (p.budget != null ? p.budget : "?") + " → $" + p.rule.action.budget;
+      } else entry.detail = "aviso";
+      state[p.rule.id + ":" + p.adsetId] = { at: Date.now(), cost: p.metrics.cost };
+      const mm = "gasto $" + p.metrics.cost + ", IC " + p.metrics.ic + ", vendas " + p.metrics.sales;
+      lines.push((p.kind === "pause_adset" ? "Pausado: " : p.kind === "set_budget" ? "Orçamento $" + p.rule.action.budget + ": " : "Aviso: ") + p.accountLabel + " · " + p.adset + " — " + mm + " (" + p.rule.name + ")");
+    } catch (e) {
+      entry.result = "erro";
+      entry.detail = String((e && e.message) || e).slice(0, 200);
+    }
+    log.unshift(entry);
+  }
+  if (plan.length) {
+    await env.COSTS_KV.put("rules_state", JSON.stringify(state));
+    await env.COSTS_KV.put("rules_log", JSON.stringify(log.slice(0, 200)));
+    await env.COSTS_KV.delete("live_campanhas");
+    if (lines.length) await sendPush(env, "Regras: " + lines.length + (lines.length === 1 ? " ação" : " ações"), lines.slice(0, 6).join("\n"));
+  }
+  return { ran: true, evaluated, actions: plan.length };
+}
+
 export default {
   // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
   async scheduled(event, env, ctx) {
@@ -928,6 +1098,7 @@ export default {
         if (data && !(data.failedAccounts || []).length) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
+          try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }
         } else {
           note = "failedAccounts:" + ((data && data.failedAccounts) || []).join(",");
         }
@@ -1662,6 +1833,79 @@ export default {
         return json({ ad }, 201, origin);
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/rules" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const rules = await loadRules(env);
+      const logRaw = await env.COSTS_KV.get("rules_log");
+      const hb = await env.COSTS_KV.get("cron_heartbeat");
+      return json({ rules, log: (logRaw ? JSON.parse(logRaw) : []).slice(0, 100), engineOn: (await env.COSTS_KV.get("rules_engine_on")) === "1", heartbeat: hb ? JSON.parse(hb) : null }, 200, origin);
+    }
+
+    if (url.pathname === "/rules" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const rules = await loadRules(env);
+      const idx = body && body.id ? rules.findIndex((r) => r.id === body.id) : -1;
+      const cleaned = cleanRule(body || {}, idx >= 0 ? rules[idx].id : null);
+      if (cleaned.error) return json({ error: cleaned.error }, 400, origin);
+      if (idx >= 0) rules[idx] = cleaned.rule; else rules.push(cleaned.rule);
+      if (rules.length > 100) return json({ error: "too_many_rules" }, 400, origin);
+      await saveRules(env, rules);
+      return json({ rules }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/rules/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const id = decodeURIComponent(url.pathname.split("/")[2] || "");
+      const rules = (await loadRules(env)).filter((r) => r.id !== id);
+      await saveRules(env, rules);
+      return json({ rules }, 200, origin);
+    }
+
+    if (url.pathname === "/rules/engine" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      await env.COSTS_KV.put("rules_engine_on", body && body.on ? "1" : "0");
+      return json({ engineOn: !!(body && body.on) }, 200, origin);
+    }
+
+    if (url.pathname === "/rules/preview" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      try {
+        const data = await getCached(env, "live_campanhas", 10, () => computeLiveCampanhas(env));
+        const lifeErrors = [];
+        const life = await fetchLifetimeAdsetMetrics(env, lifeErrors);
+        const rules = await loadRules(env);
+        const stateRaw = await env.COSTS_KV.get("rules_state");
+        const { plan, evaluated } = planRules(data, life, rules, stateRaw ? JSON.parse(stateRaw) : {});
+        const near = [];
+        for (const c of data.campaigns || []) {
+          if (c.status !== "ON" || !life[c.accountKey]) continue;
+          for (const s of c.adSets || []) {
+            if (s.status !== "ON") continue;
+            const mt = life[c.accountKey][s.id] || { cost: 0, ic: 0, venda: 0 };
+            if (mt.cost > 0) near.push({ account: c.adAccountName, campaign: c.name, adset: s.name, cost: mt.cost, ic: mt.ic, sales: mt.venda, budget: s.budget });
+          }
+        }
+        near.sort((a, b) => b.cost - a.cost);
+        return json({
+          lifeAccounts: Object.keys(life), lifeErrors,
+          evaluated,
+          wouldDo: plan.map((p) => ({ rule: p.rule.name, action: p.kind, account: p.accountLabel, campaign: p.campaign, adset: p.adset, metrics: p.metrics, budget: p.budget })),
+          activeAdsets: near.slice(0, 40),
+        }, 200, origin);
+      } catch (e) {
+        return json({ error: "preview_failed", detail: String((e && e.message) || e) }, 502, origin);
       }
     }
 
