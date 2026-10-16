@@ -210,6 +210,32 @@
   .rej-copy{font-size:12.5px; margin-top:6px;}
   .rej-reason{font-size:13px; font-weight:600; color:var(--bad); margin-top:6px;}
   .rej-card{max-width:640px; max-height:92vh; overflow-y:auto;}
+  .rules-head-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;}
+  .rules-pad{padding:14px 18px; font-size:13px;}
+  .rule-row{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 16px; padding:14px 18px; border-top:1px solid var(--line); align-items:start;}
+  .rule-row.off{opacity:.55;}
+  .rule-name{font-weight:650; font-size:14px;}
+  .rule-line{font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.5;}
+  .rule-chip{display:inline-block; font-size:11.5px; font-weight:650; padding:2px 8px; border-radius:999px; background:var(--neutral-bg); color:var(--ink); margin:2px 4px 0 0;}
+  .rule-chip.act{background:color-mix(in srgb, var(--accent) 16%, transparent);}
+  .rule-chip.warn{background:var(--bad-bg); color:var(--bad);}
+  .rule-actions{display:flex; gap:6px; align-items:center;}
+  .rule-actions button{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12px; padding:5px 10px; border-radius:var(--radius-sm); cursor:pointer;}
+  .rule-actions button.danger:hover{border-color:var(--bad); color:var(--bad);}
+  .rule-block{border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px;}
+  .rule-block-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin-bottom:8px;}
+  .rule-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
+  .rule-grid label, .rule-margin{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
+  .rule-grid select, .rule-grid input, .rule-cond select, .rule-cond input, .rule-margin input{width:100%; padding:8px 9px; font-size:13.5px; text-transform:none; letter-spacing:0; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit;}
+  .rule-cond{display:grid; grid-template-columns:1.3fr .8fr 1fr auto; gap:8px; margin-bottom:8px; align-items:center;}
+  .rule-cond button{border:none; background:none; color:var(--muted); font-size:18px; cursor:pointer; padding:0 6px;}
+  .rule-margin{margin-top:10px; text-transform:none; letter-spacing:0; font-weight:500; font-size:12px;}
+  .rule-margin input{max-width:110px;}
+  .rules-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .rules-table th, .rules-table td{padding:8px 12px; text-align:left; border-top:1px solid var(--line); vertical-align:top;}
+  .rules-table th{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700;}
+  .rules-table .bad{color:var(--bad); font-weight:600;}
+
   .rej-form{display:grid; gap:10px; margin-bottom:14px;}
   .rej-form label, .rej-on{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
   .rej-form input, .rej-pick input{width:100%; text-transform:none; letter-spacing:0; font-size:14px; padding:9px 10px;}
@@ -704,6 +730,39 @@
     </div>
   </nav>
   <div class="nav-overlay" id="navOverlay"></div>
+
+  <div class="assign-sheet" id="ruleSheet" hidden>
+    <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
+      <div class="assign-sheet-title" id="ruleSheetTitle">Nova regra</div>
+      <div class="rej-form">
+        <label>Nome <input type="text" id="ruleName" placeholder="Ex: Gasto ≥ $80 sem checkout" maxlength="120"></label>
+      </div>
+      <div class="rule-block">
+        <div class="rule-block-title">Onde vale</div>
+        <div class="rule-grid">
+          <label>Conta <select id="ruleAcc"></select></label>
+          <label>Campanha <select id="ruleCamp"></select></label>
+          <label>Nicho <select id="ruleNiche"></select></label>
+        </div>
+      </div>
+      <div class="rule-block">
+        <div class="rule-block-title">Quando (todas as condições ao mesmo tempo)</div>
+        <div id="ruleConds"></div>
+        <button type="button" class="bell-pop-link" id="ruleAddCond">+ Adicionar condição</button>
+        <label class="rule-margin" id="ruleMarginWrap">Antecipar em $ <input type="number" id="ruleMargin" min="0" max="50" step="1" value="0"> <span class="cell-muted">pausa esse valor antes do limite de gasto, porque os números da NewsBreak atrasam</span></label>
+      </div>
+      <div class="rule-block">
+        <div class="rule-block-title">Então</div>
+        <div class="rule-grid">
+          <label>Ação <select id="ruleAction"><option value="pause_adset">Pausar o conjunto</option><option value="set_budget">Mudar o orçamento do conjunto (uma vez)</option><option value="notify">Só avisar (celular)</option></select></label>
+          <label id="ruleBudgetWrap">Novo orçamento diário $ <input type="number" id="ruleBudget" min="1" step="1" value="1000"></label>
+        </div>
+      </div>
+      <div class="rej-summary" id="ruleMsg"></div>
+      <button type="button" class="assign-sheet-close" id="ruleSave">Salvar regra</button>
+      <button type="button" class="rename-cancel" id="ruleCancel">Fechar</button>
+    </div>
+  </div>
 
   <div class="assign-sheet" id="rejSheet" hidden>
     <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
@@ -1670,9 +1729,23 @@
     <div id="regrasView" hidden>
         <section class="panel">
           <div class="step-head">
-            <div class="step-head-left"><span class="step-title">Regras</span></div>
+            <div class="step-head-left"><span class="step-title">Regras</span><span class="cell-muted" id="rulesEngineInfo"></span></div>
+            <div class="rules-head-actions">
+              <button type="button" class="select-all-btn" id="rulesPreviewBtn">Testar agora</button>
+              <button type="button" class="select-all-btn" id="rulesEngineBtn"></button>
+              <button type="button" class="rej-edit-btn" id="rulesNewBtn">Nova regra</button>
+            </div>
+            <span class="step-desc">Cada regra olha o <b>conjunto</b> (nunca a campanha), a cada minuto, com os números acumulados dos últimos 30 dias. A NewsBreak pode atrasar os números, por isso as regras de pausa podem usar uma margem pra agir um pouco antes.</span>
           </div>
-          <div class="empty-state">Em construção.</div>
+          <div id="rulesList"></div>
+        </section>
+        <section class="panel" id="rulesPreviewPanel" hidden>
+          <div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Teste agora (nada é executado)</span></div></div>
+          <div id="rulesPreviewBody" class="rules-pad"></div>
+        </section>
+        <section class="panel">
+          <div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Histórico</span></div></div>
+          <div id="rulesLog"></div>
         </section>
     </div>
 
@@ -2919,7 +2992,7 @@
     renderMapa();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -2980,6 +3053,170 @@
       .catch(() => { note.textContent = 'Não consegui salvar — tenta de novo.'; });
   });
 
+
+
+  // ---------- Regras (rules engine UI) ----------
+  const RULES_API = 'https://pareto-console-api.prof-leosantana.workers.dev/rules';
+  const RULE_METRIC_LABEL = { cost: 'Gasto ($)', ic: 'IC (checkouts)', sales: 'Vendas', cpic: 'Custo por IC ($)' };
+  const RULE_OP_LABEL = { '>': '>', '>=': '≥', '<': '<', '<=': '≤', '=': '=' };
+  let rulesData = [], rulesLog = [], rulesEngineOn = false, rulesHb = null, rulesEditing = null, rulesLoaded = false;
+
+  function rulesApi(path, method, body){
+    return fetch(RULES_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
+  function loadRegras(){
+    return rulesApi().then(j => { rulesData = j.rules || []; rulesLog = j.log || []; rulesEngineOn = !!j.engineOn; rulesHb = j.heartbeat || null; rulesLoaded = true; renderRegras(); }).catch(() => { if (!rulesLoaded) { document.getElementById('rulesList').innerHTML = '<div class="empty-state">Não consegui carregar as regras agora. Tente de novo.</div>'; } });
+  }
+  function ruleCondText(c){
+    const v = (c.metric === 'cost' || c.metric === 'cpic') ? '$' + c.value : String(c.value);
+    return RULE_METRIC_LABEL[c.metric].replace(/ \(.*\)/, '') + ' ' + RULE_OP_LABEL[c.op] + ' ' + v;
+  }
+  function ruleScopeText(sc){
+    const parts = [];
+    if (sc.adAccountId || sc.accountKey) {
+      const c = (campaigns || []).find(x => (sc.adAccountId && x.adAccountId === sc.adAccountId) || (!sc.adAccountId && x.accountKey === sc.accountKey));
+      parts.push('Conta ' + (c ? c.adAccountName : (sc.adAccountId || sc.accountKey)));
+    }
+    if (sc.campaignId) { const c = (campaigns || []).find(x => x.id === sc.campaignId); parts.push('Campanha ' + (c ? c.name : sc.campaignId)); }
+    if (sc.niche) parts.push('Nicho ' + sc.niche);
+    return parts.length ? parts.join(' · ') : 'Todas as contas';
+  }
+  function ruleActionText(a){
+    return a.type === 'pause_adset' ? 'Pausa o conjunto' : a.type === 'set_budget' ? 'Orçamento do conjunto → $' + a.budget + ' (uma vez)' : 'Só avisa no celular';
+  }
+
+  function renderRegras(){
+    const list = document.getElementById('rulesList');
+    if (!list) return;
+    const eng = document.getElementById('rulesEngineBtn');
+    eng.textContent = rulesEngineOn ? 'Motor ligado — desligar' : 'Motor desligado — ligar';
+    const age = rulesHb ? Math.round((Date.now() - rulesHb.at) / 1000) : null;
+    document.getElementById('rulesEngineInfo').textContent = rulesHb ? (rulesEngineOn ? '· conferiu há ' + (age < 90 ? age + 's' : Math.round(age / 60) + ' min') : '· motor parado') : '';
+    list.innerHTML = rulesData.length ? rulesData.map(r =>
+      '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div>' +
+      '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
+      '<div class="rule-line">' + r.conditions.map(c => '<span class="rule-chip">' + ccEsc(ruleCondText(c)) + '</span>').join('') +
+      '<span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">→ ' + ccEsc(ruleActionText(r.action)) + '</span></div>' +
+      '<div class="rule-line">' + ccEsc(ruleScopeText(r.scope || {})) + (r.margin ? ' · antecipa $' + r.margin : '') + '</div></div>' +
+      '<div class="rule-actions"><label class="rej-read" style="display:inline-flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;"><input type="checkbox" data-rule-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '> Ativa</label>' +
+      '<button type="button" data-rule-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-rule-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'
+    ).join('') : '<div class="empty-state">Nenhuma regra ainda. Clique em "Nova regra".</div>';
+    list.querySelectorAll('[data-rule-toggle]').forEach(c => c.addEventListener('change', () => {
+      const r = rulesData.find(x => x.id === c.dataset.ruleToggle); if (!r) return;
+      rulesApi('', 'POST', { ...r, enabled: c.checked }).then(j => { rulesData = j.rules; renderRegras(); }).catch(() => { c.checked = !c.checked; });
+    }));
+    list.querySelectorAll('[data-rule-edit]').forEach(b => b.addEventListener('click', () => openRuleSheet(rulesData.find(x => x.id === b.dataset.ruleEdit))));
+    list.querySelectorAll('[data-rule-del]').forEach(b => b.addEventListener('click', () => {
+      const r = rulesData.find(x => x.id === b.dataset.ruleDel);
+      if (r && confirm('Excluir a regra "' + r.name + '"?')) rulesApi('/' + encodeURIComponent(r.id), 'DELETE').then(j => { rulesData = j.rules; renderRegras(); });
+    }));
+    const lg = document.getElementById('rulesLog');
+    lg.innerHTML = rulesLog.length ? '<div class="table-scroll"><table class="rules-table"><thead><tr><th>Quando</th><th>Regra</th><th>Conjunto</th><th>Números</th><th>Resultado</th></tr></thead><tbody>' +
+      rulesLog.map(e => '<tr><td>' + ccEsc(new Date(e.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })) + '</td><td>' + ccEsc(e.ruleName) + '</td><td>' + ccEsc(e.account) + ' · ' + ccEsc(e.adset) + '</td><td>gasto $' + e.metrics.cost + ' · IC ' + e.metrics.ic + ' · vendas ' + e.metrics.sales + '</td><td class="' + (e.result === 'ok' ? '' : 'bad') + '">' + ccEsc(e.result === 'ok' ? e.detail : 'erro: ' + e.detail) + '</td></tr>').join('') +
+      '</tbody></table></div>' : '<div class="empty-state">Nenhuma ação ainda. Quando uma regra disparar, aparece aqui.</div>';
+  }
+
+  document.getElementById('rulesEngineBtn').addEventListener('click', () => {
+    const next = !rulesEngineOn;
+    if (!next && !confirm('Desligar o motor? Nenhuma regra será aplicada até você ligar de novo.')) return;
+    rulesApi('/engine', 'POST', { on: next }).then(j => { rulesEngineOn = j.engineOn; renderRegras(); });
+  });
+  document.getElementById('rulesPreviewBtn').addEventListener('click', () => {
+    const panel = document.getElementById('rulesPreviewPanel'), body = document.getElementById('rulesPreviewBody');
+    panel.hidden = false; body.textContent = 'Calculando…';
+    rulesApi('/preview', 'POST', {}).then(j => {
+      const would = (j.wouldDo || []).map(w => '<div>• <b>' + ccEsc(w.action === 'pause_adset' ? 'Pausaria' : w.action === 'set_budget' ? 'Subiria o orçamento de' : 'Avisaria sobre') + '</b> ' + ccEsc(w.account) + ' · ' + ccEsc(w.adset) + ' — gasto $' + w.metrics.cost + ', IC ' + w.metrics.ic + ', vendas ' + w.metrics.sales + ' <span class="cell-muted">(' + ccEsc(w.rule) + ')</span></div>').join('');
+      const act = (j.activeAdsets || []).slice(0, 15).map(a => '<tr><td>' + ccEsc(a.account) + ' · ' + ccEsc(a.adset) + '</td><td>$' + a.cost + '</td><td>' + a.ic + '</td><td>' + a.sales + '</td><td>' + (a.budget != null ? '$' + a.budget : '—') + '</td></tr>').join('');
+      body.innerHTML = '<div style="margin-bottom:8px;"><b>' + (j.evaluated || 0) + '</b> conjunto(s) ligado(s) avaliado(s).</div>' +
+        (would || '<div class="cell-muted">Nenhuma regra dispararia agora.</div>') +
+        (act ? '<div class="table-scroll" style="margin-top:10px;"><table class="rules-table"><thead><tr><th>Conjuntos ligados com gasto</th><th>Gasto</th><th>IC</th><th>Vendas</th><th>Orçamento</th></tr></thead><tbody>' + act + '</tbody></table></div>' : '');
+    }).catch(() => { body.textContent = 'Não consegui calcular agora. Tente de novo.'; });
+  });
+  document.getElementById('rulesNewBtn').addEventListener('click', () => openRuleSheet(null));
+
+  // --- editor ---
+  function ruleCondRow(c){
+    return '<div class="rule-cond"><select data-cond="metric">' + Object.keys(RULE_METRIC_LABEL).map(m => '<option value="' + m + '"' + (c.metric === m ? ' selected' : '') + '>' + RULE_METRIC_LABEL[m] + '</option>').join('') + '</select>' +
+      '<select data-cond="op">' + Object.keys(RULE_OP_LABEL).map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + RULE_OP_LABEL[o] + '</option>').join('') + '</select>' +
+      '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Remover">×</button></div>';
+  }
+  function ruleSheetAccounts(){
+    const seen = new Map();
+    (campaigns || []).forEach(c => { if (!seen.has(c.adAccountId)) seen.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName, key: c.accountKey }); });
+    return [...seen.values()];
+  }
+  function fillRuleSelects(scope){
+    const accs = ruleSheetAccounts();
+    const accSel = document.getElementById('ruleAcc');
+    accSel.innerHTML = '<option value="">Todas as contas</option>' + accs.map(a => '<option value="' + ccEsc(a.id) + '" data-key="' + ccEsc(a.key) + '">' + ccEsc(a.name) + '</option>').join('');
+    accSel.value = scope.adAccountId || '';
+    fillRuleCamps(scope.campaignId || '');
+    const nSel = document.getElementById('ruleNiche');
+    nSel.innerHTML = '<option value="">Todos os nichos</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('');
+    nSel.value = scope.niche || '';
+  }
+  function fillRuleCamps(sel){
+    const acc = document.getElementById('ruleAcc').value;
+    const cs = (campaigns || []).filter(c => !acc || c.adAccountId === acc).slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
+    const cSel = document.getElementById('ruleCamp');
+    cSel.innerHTML = '<option value="">Todas as campanhas</option>' + cs.map(c => '<option value="' + ccEsc(c.id) + '">' + ccEsc(c.name) + '</option>').join('');
+    cSel.value = sel && cs.some(c => c.id === sel) ? sel : '';
+  }
+  function syncRuleMargin(){
+    const has = [...document.querySelectorAll('#ruleConds .rule-cond')].some(r => r.querySelector('[data-cond=metric]').value === 'cost' && /^>=?$/.test(r.querySelector('[data-cond=op]').value));
+    document.getElementById('ruleMarginWrap').style.display = has ? '' : 'none';
+  }
+  function wireRuleConds(){
+    const box = document.getElementById('ruleConds');
+    box.querySelectorAll('select, input').forEach(el => el.addEventListener('change', syncRuleMargin));
+    box.querySelectorAll('[data-cond-del]').forEach(b => b.addEventListener('click', () => { if (box.children.length > 1) { b.closest('.rule-cond').remove(); syncRuleMargin(); } }));
+  }
+  function openRuleSheet(rule){
+    rulesEditing = rule ? rule.id : null;
+    const r = rule || { name: '', scope: {}, conditions: [{ metric: 'cost', op: '>=', value: 50 }, { metric: 'ic', op: '<', value: 1 }], margin: 0, action: { type: 'pause_adset' }, enabled: true };
+    document.getElementById('ruleSheetTitle').textContent = rule ? 'Editar regra' : 'Nova regra';
+    document.getElementById('ruleName').value = r.name;
+    fillRuleSelects(r.scope || {});
+    document.getElementById('ruleConds').innerHTML = r.conditions.map(ruleCondRow).join('');
+    wireRuleConds();
+    document.getElementById('ruleMargin').value = r.margin || 0;
+    document.getElementById('ruleAction').value = r.action.type;
+    document.getElementById('ruleBudget').value = r.action.budget || 1000;
+    document.getElementById('ruleBudgetWrap').style.display = r.action.type === 'set_budget' ? '' : 'none';
+    document.getElementById('ruleMsg').textContent = '';
+    syncRuleMargin();
+    document.getElementById('ruleSheet').hidden = false;
+  }
+  document.getElementById('ruleAcc').addEventListener('change', () => fillRuleCamps(''));
+  document.getElementById('ruleAction').addEventListener('change', (e) => { document.getElementById('ruleBudgetWrap').style.display = e.target.value === 'set_budget' ? '' : 'none'; });
+  document.getElementById('ruleAddCond').addEventListener('click', () => {
+    document.getElementById('ruleConds').insertAdjacentHTML('beforeend', ruleCondRow({ metric: 'cost', op: '>=', value: 0 }));
+    wireRuleConds(); syncRuleMargin();
+  });
+  document.getElementById('ruleCancel').addEventListener('click', () => { document.getElementById('ruleSheet').hidden = true; });
+  document.getElementById('ruleSheet').addEventListener('click', (e) => { if (e.target.id === 'ruleSheet') document.getElementById('ruleSheet').hidden = true; });
+  document.getElementById('ruleSave').addEventListener('click', () => {
+    const msg = document.getElementById('ruleMsg');
+    const name = document.getElementById('ruleName').value.trim();
+    if (!name) { msg.textContent = 'Dê um nome pra regra.'; return; }
+    const conditions = [...document.querySelectorAll('#ruleConds .rule-cond')].map(r => ({ metric: r.querySelector('[data-cond=metric]').value, op: r.querySelector('[data-cond=op]').value, value: Number(r.querySelector('[data-cond=value]').value) }));
+    if (conditions.some(c => !isFinite(c.value))) { msg.textContent = 'Confira os números das condições.'; return; }
+    const accSel = document.getElementById('ruleAcc');
+    const scope = {};
+    if (accSel.value) { scope.adAccountId = accSel.value; scope.accountKey = accSel.selectedOptions[0].dataset.key; }
+    if (document.getElementById('ruleCamp').value) scope.campaignId = document.getElementById('ruleCamp').value;
+    if (document.getElementById('ruleNiche').value) scope.niche = document.getElementById('ruleNiche').value;
+    const type = document.getElementById('ruleAction').value;
+    const action = { type };
+    if (type === 'set_budget') { action.budget = Number(document.getElementById('ruleBudget').value); if (!(action.budget >= 1)) { msg.textContent = 'Informe o novo orçamento.'; return; } }
+    const existing = rulesEditing ? rulesData.find(x => x.id === rulesEditing) : null;
+    msg.textContent = 'Salvando…';
+    rulesApi('', 'POST', { id: rulesEditing || undefined, name, enabled: existing ? existing.enabled : true, scope, conditions, margin: Number(document.getElementById('ruleMargin').value) || 0, action })
+      .then(j => { rulesData = j.rules; document.getElementById('ruleSheet').hidden = true; renderRegras(); })
+      .catch(e => { msg.textContent = 'Não consegui salvar (' + friendlyError(e.message) + ').'; });
+  });
+  // ---------- /Regras ----------
 
   // ---------- Rejeições ----------
   let rejAds = [];
@@ -3288,6 +3525,8 @@
   renderAll();
   renderRejeicoes();
   if (view === 'rejeicoes') loadRejeicoes();
+  if (view === 'regras') loadRegras();
+  setInterval(() => { if (view === 'regras' && !document.hidden && document.getElementById('ruleSheet').hidden) loadRegras(); }, 20000);
   setInterval(renderLive, 30000);
 
   document.getElementById('syncNowBtn').addEventListener('click', () => {
@@ -3591,6 +3830,7 @@
       renderPresetsTable();
       if (selectedNiche) applyNichePreset(selectedNiche);
       else document.getElementById('ccNicheNote').textContent = '';
+      applyNicheToNames();
     }));
   }
 
@@ -4684,11 +4924,28 @@ function ccPreviewLines(adsets, nameOf){
     renderAccountCampaignBlocks();
   }
 
+  // The niche goes first in the campaign name ("HL - ACC01-258 - 16/10 - 1-3-1") so rules can filter by niche.
+  function stripNichePrefix(v){
+    const m = /^([A-Za-z0-9]{1,12}) - /.exec(v || '');
+    return m && topNiches().indexOf(m[1].toUpperCase()) !== -1 ? v.slice(m[0].length) : v;
+  }
+  function withNichePrefix(v){
+    const base = stripNichePrefix(v);
+    return selectedNiche ? selectedNiche + ' - ' + base : base;
+  }
+  function applyNicheToNames(){
+    const nameInput = document.getElementById('ccName');
+    if (nameInput.value.trim()) nameInput.value = withNichePrefix(nameInput.value);
+    Object.keys(accountCampaigns).forEach(id => { if ((accountCampaigns[id].name || '').trim()) accountCampaigns[id].name = withNichePrefix(accountCampaigns[id].name); });
+    renderAccountCampaignBlocks();
+    renderCcSummary();
+  }
+
   function buildDefaultCampaignName(account){
     const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9]/g, '');
     const suffix = account.id.slice(-3);
     const dateStr = fmtDateShort(todayKeyBR());
-    return label + '-' + suffix + ' - ' + dateStr + ' - ' + ccSuffix();
+    return withNichePrefix(label + '-' + suffix + ' - ' + dateStr + ' - ' + ccSuffix());
   }
 
   function prefillCampaignName(account){
