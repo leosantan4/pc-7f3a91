@@ -226,13 +226,13 @@
   .multi-sel-btn{width:100%; text-align:left; padding:8px 9px; font:inherit; font-size:13.5px; font-weight:500; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .multi-sel-btn::after{content:'▾'; float:right; color:var(--muted);}
   .multi-sel-panel{position:absolute; z-index:5; left:0; right:0; top:calc(100% + 4px); background:var(--surface-raised); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:6px; max-height:220px; overflow-y:auto;}
-  .multi-sel-panel label{display:flex; flex-direction:row; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--ink); cursor:pointer;}
+  .rule-grid .multi-sel-panel label{display:flex; flex-direction:row; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--ink); cursor:pointer;}
   .multi-sel-panel label:hover{background:var(--neutral-bg);}
   .multi-sel-panel input{width:auto; accent-color:var(--accent);}
   .rule-block{border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px;}
   .rule-block-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin-bottom:8px;}
   .rule-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
-  .rule-grid label, .rule-margin{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
+  .rule-grid label, .rule-grid .rule-lbl, .rule-margin{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
   .rule-grid select, .rule-grid input, .rule-cond select, .rule-cond input, .rule-margin input{width:100%; padding:8px 9px; font-size:13.5px; text-transform:none; letter-spacing:0; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit;}
   .rule-cond{display:grid; grid-template-columns:1.3fr .8fr 1fr auto; gap:8px; margin-bottom:8px; align-items:center;}
   .rule-cond button{border:none; background:none; color:var(--muted); font-size:18px; cursor:pointer; padding:0 6px;}
@@ -747,7 +747,7 @@
       <div class="rule-block">
         <div class="rule-block-title">Onde vale</div>
         <div class="rule-grid">
-          <label>Contas <div class="multi-sel" id="ruleAccBox"><button type="button" class="multi-sel-btn" id="ruleAccBtn">Todas as contas</button><div class="multi-sel-panel" id="ruleAccPanel" hidden></div></div></label>
+          <div class="rule-lbl">Contas <div class="multi-sel" id="ruleAccBox"><button type="button" class="multi-sel-btn" id="ruleAccBtn">Todas as contas</button><div class="multi-sel-panel" id="ruleAccPanel" hidden></div></div></div>
           <label>Campanha <select id="ruleCamp"></select></label>
           <label>Nicho <select id="ruleNiche"></select></label>
         </div>
