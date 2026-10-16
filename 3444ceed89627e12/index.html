@@ -731,6 +731,7 @@
     <button class="nav-item" data-view="vturb"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></svg></span>VSL</button>
     <div class="sidenav-group-label">Configurações</div>
     <button class="nav-item" data-view="contas"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Contas</button>
+    <button class="nav-item" data-view="notificacoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Notificações</button>
     <div class="theme-toggle" id="themeToggle">
       <button type="button" data-theme-set="light" title="Tema claro" aria-label="Tema claro"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
       <button type="button" data-theme-set="dark" title="Tema escuro" aria-label="Tema escuro"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
@@ -1121,6 +1122,19 @@
     .bell-wrap{order:2; margin-left:auto;}
     .live-pill{order:3; flex:1 1 100%; min-width:0;}
   }
+
+  /* ===== Notificações ===== */
+  .notif-row{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 16px; padding:14px 18px; border-top:1px solid var(--line); align-items:center;}
+  .notif-row.off{opacity:.6;}
+  .notif-url{font-family:ui-monospace,Menlo,monospace; font-size:11.5px; word-break:break-all;}
+  .notif-type{display:inline-flex; align-items:center; gap:6px; margin-right:14px; font-size:12.5px; color:var(--ink); cursor:pointer;}
+  .notif-type input{accent-color:var(--accent);}
+  .notif-res{font-size:12px; margin-right:6px;}
+  .notif-add{display:grid; gap:12px; padding:14px 18px 18px; max-width:560px;}
+  .notif-add label:not(.rule-notify){display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
+  .notif-add input[type=text], .notif-add input[type=password]{width:100%; text-transform:none; letter-spacing:0; font-size:14px; padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit;}
+  .notif-types{display:flex; gap:18px; flex-wrap:wrap;}
+  .notif-types .rule-notify{margin-top:0;}
 </style>
 </defs>
 
@@ -1784,6 +1798,29 @@
         </section>
     </div>
 
+    <div id="notificacoesView" hidden>
+        <section class="panel">
+          <div class="step-head">
+            <div class="step-head-left"><span class="step-title">Notificações</span></div>
+            <span class="step-desc">Quem recebe os avisos no celular (anúncio recusado e ações das regras). Cada pessoa cola aqui o endereço (webhook) da <b>própria</b> notificação do Pushcut, sem precisar de acesso à Cloudflare. O endereço fica guardado no servidor e <b>nunca mais aparece inteiro</b>.</span>
+          </div>
+          <div id="notifList"></div>
+        </section>
+        <section class="panel">
+          <div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Adicionar destinatário</span></div></div>
+          <div class="notif-add">
+            <label>Nome <input type="text" id="notifName" maxlength="60" placeholder="Ex: Ana" autocomplete="off"></label>
+            <label>Endereço do Pushcut <input type="password" id="notifUrl" placeholder="https://api.pushcut.io/…/notifications/…" autocomplete="off"></label>
+            <div class="notif-types">
+              <label class="rule-notify"><input type="checkbox" id="notifTypeRej" checked> Anúncios recusados</label>
+              <label class="rule-notify"><input type="checkbox" id="notifTypeRules" checked> Ações das regras</label>
+            </div>
+            <div class="rej-summary" id="notifMsg"></div>
+            <button type="button" class="rej-edit-btn" id="notifAddBtn">Adicionar</button>
+          </div>
+        </section>
+    </div>
+
     <div id="rejeicoesView" hidden>
         <section class="panel">
           <div class="step-head">
@@ -2278,6 +2315,7 @@
     document.getElementById('linksView').hidden = view !== 'links';
     document.getElementById('rejeicoesView').hidden = view !== 'rejeicoes';
     document.getElementById('regrasView').hidden = view !== 'regras';
+    document.getElementById('notificacoesView').hidden = view !== 'notificacoes';
     document.getElementById('contasView').hidden = view !== 'contas';
     document.getElementById('mainContent').classList.toggle('wide', view === 'criar' || view === 'galeria');
   }
@@ -3072,7 +3110,7 @@
     renderMapa();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -3134,6 +3172,67 @@
   });
 
 
+
+
+  // ---------- Notificações (destinatários do Pushcut) ----------
+  const NOTIF_API = 'https://pareto-console-api.prof-leosantana.workers.dev/push';
+  let notifData = { serverDefault: false, recipients: [] }, notifLoaded = false;
+  function notifApi(path, method, body){
+    return fetch(NOTIF_API + path, { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
+  function notifErrorText(code){
+    return code === 'url_invalid' ? 'Esse endereço não parece um webhook do Pushcut (tem que começar com https://api.pushcut.io/…).'
+      : code === 'name_required' ? 'Escreva o nome da pessoa.'
+      : code === 'too_many' ? 'Limite de destinatários atingido.'
+      : friendlyError(code);
+  }
+  function loadNotifs(){
+    return notifApi('/recipients').then(j => { notifData = j; notifLoaded = true; renderNotifs(); }).catch(() => {
+      if (!notifLoaded) document.getElementById('notifList').innerHTML = '<div class="empty-state">Não consegui carregar agora. Tente de novo.</div>';
+    });
+  }
+  function renderNotifs(){
+    const el = document.getElementById('notifList');
+    if (!el) return;
+    const rows = [];
+    if (notifData.serverDefault) rows.push('<div class="notif-row"><div><div class="rule-name">Aviso padrão do servidor</div><div class="rule-line">Configurado na Cloudflare (recebe tudo).</div></div><div class="rule-actions"><span class="cell-muted notif-res" data-res="default"></span><button type="button" data-notif-test="default">Enviar teste</button></div></div>');
+    notifData.recipients.forEach(r => rows.push(
+      '<div class="notif-row' + (r.enabled ? '' : ' off') + '"><div>' +
+      '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
+      '<div class="rule-line notif-url">' + ccEsc(r.urlMasked) + '</div>' +
+      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label></div></div>' +
+      '<div class="rule-actions"><span class="cell-muted notif-res" data-res="' + ccEsc(r.id) + '"></span><label class="switch" title="' + (r.enabled ? 'Recebendo' : 'Pausado') + '"><input type="checkbox" data-notif-on="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label>' +
+      '<button type="button" data-notif-test="' + ccEsc(r.id) + '">Teste</button><button type="button" class="danger" data-notif-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'));
+    el.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">Ninguém cadastrado ainda. Adicione abaixo.</div>';
+    const save = (id, patch) => { const r = notifData.recipients.find(x => x.id === id); return notifApi('/recipients', 'POST', { id, name: r.name, enabled: r.enabled, types: r.types, ...patch }).then(loadNotifs); };
+    el.querySelectorAll('[data-notif-on]').forEach(c => c.addEventListener('change', () => save(c.dataset.notifOn, { enabled: c.checked }).catch(() => { c.checked = !c.checked; })));
+    el.querySelectorAll('[data-notif-type]').forEach(c => c.addEventListener('change', () => {
+      const r = notifData.recipients.find(x => x.id === c.dataset.id); const types = { ...r.types, [c.dataset.notifType]: c.checked };
+      save(c.dataset.id, { types }).catch(() => { c.checked = !c.checked; });
+    }));
+    el.querySelectorAll('[data-notif-del]').forEach(b => b.addEventListener('click', () => {
+      const r = notifData.recipients.find(x => x.id === b.dataset.notifDel);
+      if (r && confirm('Remover ' + r.name + ' das notificações?')) notifApi('/recipients/' + encodeURIComponent(r.id), 'DELETE').then(loadNotifs);
+    }));
+    el.querySelectorAll('[data-notif-test]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.notifTest, out = el.querySelector('[data-res="' + id + '"]');
+      out.textContent = 'Enviando…';
+      notifApi('/test', 'POST', { id }).then(j => { out.textContent = j.ok ? 'Enviado! Confira o celular.' : (j.error === 'not_configured' ? 'Não encontrado.' : 'O Pushcut recusou (status ' + (j.status || '?') + '). Confira o endereço.'); })
+        .catch(() => { out.textContent = 'Sem conexão com o servidor.'; });
+    }));
+  }
+  document.getElementById('notifAddBtn').addEventListener('click', () => {
+    const msg = document.getElementById('notifMsg');
+    const name = document.getElementById('notifName').value.trim(), url = document.getElementById('notifUrl').value.trim();
+    if (!name) { msg.textContent = 'Escreva o nome da pessoa.'; return; }
+    if (!url) { msg.textContent = 'Cole o endereço do Pushcut.'; return; }
+    msg.textContent = 'Salvando…';
+    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked } })
+      .then(() => { document.getElementById('notifName').value = ''; document.getElementById('notifUrl').value = ''; msg.textContent = 'Adicionado. Use "Teste" pra confirmar que chega no celular.'; return loadNotifs(); })
+      .catch(e => { msg.textContent = notifErrorText(e.message); });
+  });
+  // ---------- /Notificações ----------
 
   // ---------- Regras (rules engine UI) ----------
   const RULES_API = 'https://pareto-console-api.prof-leosantana.workers.dev/rules';
@@ -3712,6 +3811,7 @@
   renderRejeicoes();
   if (view === 'rejeicoes') loadRejeicoes();
   if (view === 'regras') loadRegras();
+  if (view === 'notificacoes') loadNotifs();
   setInterval(() => { if (view === 'regras' && !document.hidden && document.getElementById('ruleSheet').hidden) loadRegras(); }, 20000);
   setInterval(renderLive, 30000);
 

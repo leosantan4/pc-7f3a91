@@ -868,27 +868,57 @@ function rejectedActiveAds(data) {
   return out;
 }
 
-async function sendPush(env, title, text) {
-  if (!env.PUSHCUT_URL) return { ok: false, error: "not_configured" };
+// ---- Push recipients: the server default (secret PUSHCUT_URL) + people who paste their own Pushcut URL in the app. ----
+const PUSH_TYPES = ["rejections", "rules"];
+async function loadRecipients(env) {
+  const raw = await env.COSTS_KV.get("push_recipients");
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
+function validPushUrl(u) {
+  try { const x = new URL(String(u)); return x.protocol === "https:" && x.hostname === "api.pushcut.io" && x.pathname.length > 8; } catch { return false; }
+}
+function maskPushUrl(u) {
   try {
-    const resp = await fetch(env.PUSHCUT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, text }),
-    });
-    const result = { ok: resp.ok, status: resp.status };
-    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
-    return result;
-  } catch (e) {
-    const result = { ok: false, error: "network" };
-    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
-    return result;
+    const x = new URL(u);
+    const seg = x.pathname.split("/").filter(Boolean);
+    if (seg.length) seg[0] = "••••••";
+    return x.origin + "/" + seg.join("/");
+  } catch { return "••••••"; }
+}
+function recipientWants(r, type) {
+  if (r.enabled === false) return false;
+  const t = r.types || {};
+  return type === "test" ? true : t[type] !== false;
+}
+async function pushTargets(env, type, onlyId) {
+  const out = [];
+  if (env.PUSHCUT_URL && (!onlyId || onlyId === "default")) out.push({ id: "default", url: env.PUSHCUT_URL });
+  for (const r of await loadRecipients(env)) {
+    if (onlyId) { if (r.id === onlyId) out.push({ id: r.id, url: r.url }); }
+    else if (recipientWants(r, type)) out.push({ id: r.id, url: r.url });
   }
+  return out;
+}
+
+async function sendPush(env, title, text, type, onlyId) {
+  const targets = await pushTargets(env, type || "test", onlyId);
+  if (!targets.length) return { ok: false, error: "not_configured" };
+  const results = await Promise.all(targets.map(async (t) => {
+    try {
+      const resp = await fetch(t.url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, text }) });
+      return { id: t.id, ok: resp.ok, status: resp.status };
+    } catch (e) { return { id: t.id, ok: false, error: "network" }; }
+  }));
+  const okCount = results.filter((r) => r.ok).length;
+  const result = { ok: okCount > 0, sent: okCount, failed: results.length - okCount, status: (results.find((r) => !r.ok) || results[0]).status };
+  await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+  return result;
 }
 
 // First alert right away; then a reminder every PUSH_REPEAT_MIN minutes (default 30) while it stays rejected + active.
 async function pushRejectedAlerts(env, data) {
-  if (!env.PUSHCUT_URL) return;
+  if (!(await pushTargets(env, "rejections")).length) return;
   const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
   const now = Date.now();
   const raw = await env.COSTS_KV.get("push_state");
@@ -906,12 +936,12 @@ async function pushRejectedAlerts(env, data) {
   const line = (a) => a.account + " · " + a.name + " — " + a.reason;
   let sentOk = true;
   if (fresh.length) {
-    const r = await sendPush(env, (fresh.length > 1 ? "Anúncios recusados (" + fresh.length + ")" : "Anúncio recusado"), fresh.slice(0, 6).map(line).join("\n"));
+    const r = await sendPush(env, (fresh.length > 1 ? "Anúncios recusados (" + fresh.length + ")" : "Anúncio recusado"), fresh.slice(0, 6).map(line).join("\n"), "rejections");
     sentOk = sentOk && r.ok;
     if (!r.ok) fresh.forEach((a) => { delete next[a.id]; }); // try again next minute
   }
   if (reminders.length) {
-    const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"));
+    const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"), "rejections");
     if (!r.ok) reminders.forEach((a) => { next[a.id] = state[a.id]; });
   }
   await env.COSTS_KV.put("push_state", JSON.stringify(next)); // ads that left the list are forgotten, so a new rejection alerts again
@@ -1102,7 +1132,7 @@ async function runRulesEngine(env, data) {
     await env.COSTS_KV.put("rules_state", JSON.stringify(state));
     await env.COSTS_KV.put("rules_log", JSON.stringify(log.slice(0, 200)));
     await env.COSTS_KV.delete("live_campanhas");
-    if (lines.length) await sendPush(env, "Regras: " + lines.length + (lines.length === 1 ? " ação" : " ações"), lines.slice(0, 6).join("\n"));
+    if (lines.length) await sendPush(env, "Regras: " + lines.length + (lines.length === 1 ? " ação" : " ações"), lines.slice(0, 6).join("\n"), "rules");
   }
   return { ran: true, evaluated, actions: plan.length };
 }
@@ -1927,6 +1957,54 @@ export default {
       } catch (e) {
         return json({ error: "preview_failed", detail: String((e && e.message) || e) }, 502, origin);
       }
+    }
+
+    if (url.pathname === "/push/recipients" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const recs = await loadRecipients(env);
+      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false }, createdAt: r.createdAt })) }, 200, origin);
+    }
+
+    if (url.pathname === "/push/recipients" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const recs = await loadRecipients(env);
+      const idx = body && body.id ? recs.findIndex((r) => r.id === body.id) : -1;
+      const name = String((body && body.name) || "").trim().slice(0, 60);
+      if (!name) return json({ error: "name_required" }, 400, origin);
+      const types = {};
+      for (const t of PUSH_TYPES) types[t] = !(body.types && body.types[t] === false);
+      if (idx >= 0) {
+        if (body.url) { if (!validPushUrl(body.url)) return json({ error: "url_invalid" }, 400, origin); recs[idx].url = String(body.url).trim(); }
+        recs[idx].name = name; recs[idx].types = types; if (body.enabled !== undefined) recs[idx].enabled = body.enabled !== false;
+      } else {
+        if (!validPushUrl(body.url)) return json({ error: "url_invalid" }, 400, origin);
+        if (recs.length >= 20) return json({ error: "too_many" }, 400, origin);
+        recs.push({ id: crypto.randomUUID(), name, url: String(body.url).trim(), enabled: true, types, createdAt: Date.now() });
+      }
+      await env.COSTS_KV.put("push_recipients", JSON.stringify(recs));
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/push/recipients/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const id = decodeURIComponent(url.pathname.split("/")[3] || "");
+      const recs = (await loadRecipients(env)).filter((r) => r.id !== id);
+      await env.COSTS_KV.put("push_recipients", JSON.stringify(recs));
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname === "/push/test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const r = await sendPush(env, "Teste do aviso", "Se você viu isso, o aviso do RASTRO está funcionando.", "test", String((body && body.id) || "default"));
+      return json(r, 200, origin);
     }
 
     if (url.pathname === "/push-test" && request.method === "POST") {
