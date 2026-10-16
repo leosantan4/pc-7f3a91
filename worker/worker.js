@@ -966,6 +966,7 @@ function cleanRule(b, existingId) {
   const s = b.scope || {};
   const scope = {};
   for (const k of ["accountKey", "adAccountId", "campaignId", "niche"]) if (s[k]) scope[k] = String(s[k]).slice(0, 80);
+  if (Array.isArray(s.adAccountIds) && s.adAccountIds.length) scope.adAccountIds = s.adAccountIds.slice(0, 50).map((x) => String(x).slice(0, 80));
   const margin = Math.max(0, Math.min(50, Number(b.margin) || 0));
   return { rule: { id: existingId || String(b.id || crypto.randomUUID()).slice(0, 60), name, enabled: b.enabled !== false, scope, margin, action, conditions: cleanConds } };
 }
@@ -979,6 +980,7 @@ function ruleScopeOk(scope, ctx) {
   if (!scope) return true;
   if (scope.accountKey && scope.accountKey !== ctx.accountKey) return false;
   if (scope.adAccountId && scope.adAccountId !== ctx.adAccountId) return false;
+  if (Array.isArray(scope.adAccountIds) && scope.adAccountIds.length && scope.adAccountIds.indexOf(ctx.adAccountId) === -1) return false;
   if (scope.campaignId && scope.campaignId !== ctx.campaignId) return false;
   if (scope.niche && String(scope.niche).toUpperCase() !== nicheOfName(ctx.campaignName)) return false;
   return true;
@@ -1075,6 +1077,7 @@ async function runRulesEngine(env, data) {
     } catch (e) {
       entry.result = "erro";
       entry.detail = String((e && e.message) || e).slice(0, 200);
+      lines.push("FALHOU (" + (p.kind === "pause_adset" ? "pausar" : p.kind === "set_budget" ? "mudar orçamento" : "avisar") + "): " + p.accountLabel + " · " + p.adset + " (" + p.rule.name + ")");
     }
     log.unshift(entry);
   }

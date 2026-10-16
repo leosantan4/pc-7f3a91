@@ -222,6 +222,13 @@
   .rule-actions{display:flex; gap:6px; align-items:center;}
   .rule-actions button{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12px; padding:5px 10px; border-radius:var(--radius-sm); cursor:pointer;}
   .rule-actions button.danger:hover{border-color:var(--bad); color:var(--bad);}
+  .multi-sel{position:relative; text-transform:none; letter-spacing:0;}
+  .multi-sel-btn{width:100%; text-align:left; padding:8px 9px; font:inherit; font-size:13.5px; font-weight:500; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .multi-sel-btn::after{content:'▾'; float:right; color:var(--muted);}
+  .multi-sel-panel{position:absolute; z-index:5; left:0; right:0; top:calc(100% + 4px); background:var(--surface-raised); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); padding:6px; max-height:220px; overflow-y:auto;}
+  .multi-sel-panel label{display:flex; flex-direction:row; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--ink); cursor:pointer;}
+  .multi-sel-panel label:hover{background:var(--neutral-bg);}
+  .multi-sel-panel input{width:auto; accent-color:var(--accent);}
   .rule-block{border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px;}
   .rule-block-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin-bottom:8px;}
   .rule-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
@@ -740,7 +747,7 @@
       <div class="rule-block">
         <div class="rule-block-title">Onde vale</div>
         <div class="rule-grid">
-          <label>Conta <select id="ruleAcc"></select></label>
+          <label>Contas <div class="multi-sel" id="ruleAccBox"><button type="button" class="multi-sel-btn" id="ruleAccBtn">Todas as contas</button><div class="multi-sel-panel" id="ruleAccPanel" hidden></div></div></label>
           <label>Campanha <select id="ruleCamp"></select></label>
           <label>Nicho <select id="ruleNiche"></select></label>
         </div>
@@ -3074,10 +3081,11 @@
   }
   function ruleScopeText(sc){
     const parts = [];
-    if (sc.adAccountId || sc.accountKey) {
-      const c = (campaigns || []).find(x => (sc.adAccountId && x.adAccountId === sc.adAccountId) || (!sc.adAccountId && x.accountKey === sc.accountKey));
-      parts.push('Conta ' + (c ? c.adAccountName : (sc.adAccountId || sc.accountKey)));
-    }
+    const ids = (sc.adAccountIds && sc.adAccountIds.length) ? sc.adAccountIds : (sc.adAccountId ? [sc.adAccountId] : []);
+    if (ids.length) {
+      const names = ids.map(id => { const c = (campaigns || []).find(x => x.adAccountId === id); return c ? c.adAccountName : id; });
+      parts.push((names.length > 1 ? 'Contas ' : 'Conta ') + names.join(', '));
+    } else if (sc.accountKey) parts.push('Conta ' + sc.accountKey);
     if (sc.campaignId) { const c = (campaigns || []).find(x => x.id === sc.campaignId); parts.push('Campanha ' + (c ? c.name : sc.campaignId)); }
     if (sc.niche) parts.push('Nicho ' + sc.niche);
     return parts.length ? parts.join(' · ') : 'Todas as contas';
@@ -3141,24 +3149,38 @@
       '<select data-cond="op">' + Object.keys(RULE_OP_LABEL).map(o => '<option value="' + o + '"' + (c.op === o ? ' selected' : '') + '>' + RULE_OP_LABEL[o] + '</option>').join('') + '</select>' +
       '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Remover">×</button></div>';
   }
+  let ruleAccSel = new Set();
   function ruleSheetAccounts(){
     const seen = new Map();
     (campaigns || []).forEach(c => { if (!seen.has(c.adAccountId)) seen.set(c.adAccountId, { id: c.adAccountId, name: c.adAccountName, key: c.accountKey }); });
-    return [...seen.values()];
+    return [...seen.values()].sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR', { numeric: true }));
+  }
+  function renderRuleAccBtn(){
+    const accs = ruleSheetAccounts().filter(a => ruleAccSel.has(a.id));
+    document.getElementById('ruleAccBtn').textContent = accs.length ? accs.map(a => a.name).join(', ') : 'Todas as contas';
+  }
+  function renderRuleAccPanel(){
+    const accs = ruleSheetAccounts();
+    const panel = document.getElementById('ruleAccPanel');
+    panel.innerHTML = '<label><input type="checkbox" data-acc-all' + (!ruleAccSel.size ? ' checked' : '') + '> Todas as contas</label>' +
+      accs.map(a => '<label><input type="checkbox" data-acc="' + ccEsc(a.id) + '"' + (ruleAccSel.has(a.id) ? ' checked' : '') + '> ' + ccEsc(a.name) + '</label>').join('');
+    panel.querySelector('[data-acc-all]').addEventListener('change', () => { ruleAccSel = new Set(); renderRuleAccPanel(); renderRuleAccBtn(); fillRuleCamps(''); });
+    panel.querySelectorAll('[data-acc]').forEach(c => c.addEventListener('change', () => {
+      if (c.checked) ruleAccSel.add(c.dataset.acc); else ruleAccSel.delete(c.dataset.acc);
+      renderRuleAccPanel(); renderRuleAccBtn(); fillRuleCamps('');
+    }));
   }
   function fillRuleSelects(scope){
-    const accs = ruleSheetAccounts();
-    const accSel = document.getElementById('ruleAcc');
-    accSel.innerHTML = '<option value="">Todas as contas</option>' + accs.map(a => '<option value="' + ccEsc(a.id) + '" data-key="' + ccEsc(a.key) + '">' + ccEsc(a.name) + '</option>').join('');
-    accSel.value = scope.adAccountId || '';
+    ruleAccSel = new Set((scope.adAccountIds && scope.adAccountIds.length) ? scope.adAccountIds : (scope.adAccountId ? [scope.adAccountId] : []));
+    document.getElementById('ruleAccPanel').hidden = true;
+    renderRuleAccPanel(); renderRuleAccBtn();
     fillRuleCamps(scope.campaignId || '');
     const nSel = document.getElementById('ruleNiche');
     nSel.innerHTML = '<option value="">Todos os nichos</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('');
     nSel.value = scope.niche || '';
   }
   function fillRuleCamps(sel){
-    const acc = document.getElementById('ruleAcc').value;
-    const cs = (campaigns || []).filter(c => !acc || c.adAccountId === acc).slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
+    const cs = (campaigns || []).filter(c => !ruleAccSel.size || ruleAccSel.has(c.adAccountId)).slice().sort((a, b) => String(b.id).localeCompare(String(a.id)));
     const cSel = document.getElementById('ruleCamp');
     cSel.innerHTML = '<option value="">Todas as campanhas</option>' + cs.map(c => '<option value="' + ccEsc(c.id) + '">' + ccEsc(c.name) + '</option>').join('');
     cSel.value = sel && cs.some(c => c.id === sel) ? sel : '';
@@ -3188,7 +3210,8 @@
     syncRuleMargin();
     document.getElementById('ruleSheet').hidden = false;
   }
-  document.getElementById('ruleAcc').addEventListener('change', () => fillRuleCamps(''));
+  document.getElementById('ruleAccBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ruleAccPanel'); p.hidden = !p.hidden; });
+  document.getElementById('ruleSheet').addEventListener('click', (e) => { const p = document.getElementById('ruleAccPanel'); if (!p.hidden && !document.getElementById('ruleAccBox').contains(e.target)) p.hidden = true; });
   document.getElementById('ruleAction').addEventListener('change', (e) => { document.getElementById('ruleBudgetWrap').style.display = e.target.value === 'set_budget' ? '' : 'none'; });
   document.getElementById('ruleAddCond').addEventListener('click', () => {
     document.getElementById('ruleConds').insertAdjacentHTML('beforeend', ruleCondRow({ metric: 'cost', op: '>=', value: 0 }));
@@ -3202,9 +3225,8 @@
     if (!name) { msg.textContent = 'Dê um nome pra regra.'; return; }
     const conditions = [...document.querySelectorAll('#ruleConds .rule-cond')].map(r => ({ metric: r.querySelector('[data-cond=metric]').value, op: r.querySelector('[data-cond=op]').value, value: Number(r.querySelector('[data-cond=value]').value) }));
     if (conditions.some(c => !isFinite(c.value))) { msg.textContent = 'Confira os números das condições.'; return; }
-    const accSel = document.getElementById('ruleAcc');
     const scope = {};
-    if (accSel.value) { scope.adAccountId = accSel.value; scope.accountKey = accSel.selectedOptions[0].dataset.key; }
+    if (ruleAccSel.size) scope.adAccountIds = [...ruleAccSel];
     if (document.getElementById('ruleCamp').value) scope.campaignId = document.getElementById('ruleCamp').value;
     if (document.getElementById('ruleNiche').value) scope.niche = document.getElementById('ruleNiche').value;
     const type = document.getElementById('ruleAction').value;
