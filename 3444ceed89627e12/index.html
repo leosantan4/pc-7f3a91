@@ -2113,6 +2113,7 @@
   applyNavCollapsed(loadPref('navCollapsed', '') === '1');
 
   let libraryItems = [];
+  let niches = [];
   let view = loadPref('view', 'painel');
   let criarSource = loadPref('criarSource', '') || null;
   let scope = loadPref('scope', 'geral');
@@ -4190,7 +4191,6 @@
   let mediaSearchQuery = '';
   let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
   let selectedGalleryIds = [];
-  let niches = [];
   let selectedNiche = loadPref('ccNiche', '');
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
