@@ -874,6 +874,8 @@
     <div class="alert-banner" id="alertBanner" hidden></div>
 
     <div id="painelView">
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel src-other-panel"><div class="step-head"><div class="step-head-left"><span class="step-title" data-src-title></span></div></div><div class="empty-state" data-src-body></div></section>
       <div class="tabs period" id="periodTabs"></div>
 
       <section class="summary-grid" id="summaryGrid"></section>
@@ -1189,6 +1191,68 @@
   .integ-res{font-size:12px; flex-basis:100%;}
   @media (max-width:720px){ .integ-row{grid-template-columns:1fr;} }
 
+  /* ===== Seletor de fonte compartilhado ===== */
+  .src-other-panel{display:none;}
+  body[data-source-other="1"] #painelView > *:not(.source-pills):not(.src-other-panel),
+  body[data-source-other="1"] #rejeicoesView > *:not(.source-pills):not(.src-other-panel),
+  body[data-source-other="1"] #regrasView > *:not(.source-pills):not(.src-other-panel){display:none !important;}
+  body[data-source-other="1"] .src-other-panel{display:block;}
+  #criarSourceChooser, #criarSourceBar{display:none !important;}
+  .pill .src-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--line); margin-right:7px; vertical-align:middle;}
+  .pill .src-dot.on{background:var(--good);}
+  .pill .src-dot.part{background:#e0a300;}
+  .pill.active .src-dot:not(.on):not(.part){background:color-mix(in srgb, var(--accent-ink) 35%, transparent);}
+  .integ-row.integ-conn{display:flex; align-items:flex-start; gap:18px;}
+  .integ-conn > div:first-child{flex:1 1 auto; min-width:0;}
+  .integ-conn .integ-actions{flex:none; margin-left:auto; flex-wrap:nowrap;}
+  .integ-justify{text-align:justify; text-justify:inter-word; line-height:1.55;}
+  .integ-conn .integ-res{display:block; margin-top:4px;}
+  @media (max-width:720px){ .integ-row.integ-conn{flex-direction:column; align-items:stretch;} .integ-conn .integ-actions{margin-left:0;} }
+  .tb-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;}
+  .tb-bar select, .tb-bar input{padding:7px 10px; font-size:13px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit; min-width:0;}
+  .tb-bar input{flex:1 1 160px; max-width:280px;}
+  .tb-x{border:0; background:none; color:inherit; cursor:pointer; font:inherit; padding:0 0 0 4px;}
+  .tb-root{padding:12px 16px 16px; text-align:left; color:var(--ink);}
+  .tb-root .tb-fresh{margin:0 0 10px;}
+  .tb-root .summary-grid{margin-bottom:16px;}
+  .tb-root .empty-state{padding:28px 12px;}
+  .pill.small{padding:3px 9px; font-size:11.5px;}
+  .tbr-top{display:flex; gap:16px; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; margin-bottom:4px;}
+  .tbr-panel{margin-top:12px; padding:0;}
+  .tbr-table{min-width:560px;}
+  .tbr-table th, .tbr-table td{text-align:center; padding:12px 14px; vertical-align:middle;}
+  .tbr-ic{border:0; background:none; color:var(--muted); cursor:pointer; padding:6px; border-radius:var(--radius-sm); line-height:0;}
+  .tbr-ic:hover{background:var(--neutral-bg); color:var(--ink);}
+  .tbr-ic.bad:hover{color:var(--bad);}
+  .tbr-accs{max-height:180px; overflow:auto; padding:2px 0;}
+  .tbr-modes{display:flex; gap:6px; flex-wrap:wrap;}
+  .tbr-form{border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin:0 0 16px; background:var(--surface-raised);}
+  .tbr-form input, .tbr-form select, .tbr-form textarea{padding:7px 10px; font-size:13px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit; min-width:0;}
+  .tbr-form textarea{width:100%; resize:vertical;}
+  .tbr-l{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:12px 0 5px;}
+  .tbr-row{display:flex; gap:14px; flex-wrap:wrap;}
+  .tbr-cond{display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;}
+  .tbr-actions{display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap;}
+  .tbr-actions button:not(.rej-edit-btn), .tb-bar button:not(.rej-edit-btn):not(.pill):not(.tab){border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:6px 12px; border-radius:var(--radius-sm); cursor:pointer;}
+  .tbr-prev{border:1px dashed var(--line); border-radius:var(--radius); padding:12px 14px; margin:0 0 14px;}
+  .tbr-rule{padding-left:0; padding-right:0;}
+  .integ-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; padding:4px 18px 14px;}
+  .integ-card{display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left; padding:14px 16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-raised); color:var(--ink); font:inherit; cursor:pointer; transition:border-color .12s, transform .12s;}
+  .integ-card:hover{border-color:var(--accent); transform:translateY(-1px);}
+  .integ-card-name{font-size:15px; font-weight:700;}
+  .integ-intro{font-size:13px; color:var(--muted); padding:0 18px 4px;}
+  .integ-detail-head{display:flex; align-items:center; gap:14px; padding:4px 18px 8px; flex-wrap:wrap;}
+  .integ-back{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:6px 10px; border-radius:var(--radius-sm); cursor:pointer;}
+  .integ-detail-title{font-size:18px; font-weight:750;}
+  .integ-status{padding:0 18px 6px;}
+  .integ-subhead{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:14px 18px 6px; border-top:1px solid var(--line);}
+  .integ-pad{padding:0 18px 14px;}
+  .integ-form{display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:0 18px 16px;}
+  .integ-form input{flex:1 1 200px; min-width:0; padding:8px 10px; font-size:13.5px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit;}
+  .integ-form .integ-res{flex-basis:100%;}
+  .integ-section{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:16px 18px 6px; border-top:1px solid var(--line);}
+  .integ-sub{font-size:13px; font-weight:700; padding:12px 18px 2px;}
+  .integ-note{font-size:12.5px; color:var(--muted); padding:0 18px 12px; line-height:1.5;}
   /* ===== Campanhas v2 (3 abas, estilo gerenciador da NewsBreak) ===== */
   .ct-toolbar{display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; padding:4px 18px 12px;}
   .ct-toolbar select.camp-search{width:auto; max-width:200px;}
@@ -1628,6 +1692,7 @@
     </div>
 
     <div id="criarView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
       <div id="criarSourceChooser" hidden>
         <p class="dre-intro" style="padding:0 0 14px;">Escolha a fonte de tráfego. Depois você escolhe a estrutura da campanha.</p>
         <div class="source-card-grid" id="criarSourceGrid"></div>
@@ -1906,13 +1971,15 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Integrações</span></div>
-            <span class="step-desc">Cole aqui as chaves das ferramentas que alimentam o RASTRO. Elas ficam guardadas no servidor e <b>nunca aparecem inteiras</b> depois de salvas (só os 4 últimos caracteres). Uma chave salva aqui tem prioridade sobre a configurada na Cloudflare.</span>
+            <span class="step-desc">As ferramentas que alimentam o RASTRO. As chaves ficam guardadas no servidor e <b>nunca aparecem inteiras</b> depois de salvas (só os 4 últimos caracteres).</span>
           </div>
           <div id="integList"></div>
         </section>
     </div>
 
     <div id="rejeicoesView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel src-other-panel"><div class="step-head"><div class="step-head-left"><span class="step-title" data-src-title></span></div></div><div class="empty-state" data-src-body></div></section>
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Rejeições</span><span class="cell-muted" id="rejCount"></span></div>
@@ -1931,6 +1998,8 @@
     </div>
 
     <div id="regrasView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel src-other-panel"><div class="step-head"><div class="step-head-left"><span class="step-title" data-src-title></span></div></div><div class="empty-state" data-src-body></div></section>
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Regras</span><span class="cell-muted" id="rulesEngineInfo"></span></div>
@@ -2128,7 +2197,7 @@
   let libraryItems = [];
   let niches = [];
   let view = loadPref('view', 'painel');
-  let criarSource = loadPref('criarSource', '') || null;
+  let criarSource = null;
   let scope = loadPref('scope', 'geral');
   let period = loadPref('period', 'today');
   let metric = loadPref('metric', 'faturamento');
@@ -2140,8 +2209,323 @@
     { key: 'taboola', label: 'Taboola', connected: false },
     { key: 'outbrain', label: 'Outbrain', connected: false },
   ];
-  let campSource = loadPref('campSource', 'newsbreak');
+  // One shared "source" (fonte de tráfego) for every source-scoped screen: Dashboard, Criar Campanha, Campanhas, Rejeições, Regras.
+  let campSource = loadPref('source', loadPref('campSource', 'newsbreak'));
   if (!TRAFFIC_SOURCES.some(x => x.key === campSource)) campSource = 'newsbreak';
+  criarSource = campSource;
+  let taboolaState = { configured: false, ok: false, accounts: [] };
+  const TABOOLA_STATUS_API = 'https://pareto-console-api.prof-leosantana.workers.dev/taboola/status';
+  const SOURCE_SCOPED_VIEWS = ['painel', 'criar', 'campanhas', 'rejeicoes', 'regras'];
+  const VIEW_TITLES = { dre: 'DRE Mensal', custos: 'Custos Fixos', saldo: 'Saldo', links: 'Links das contas', galeria: 'Galeria de ads', mapa: 'Mapa de Vendas', vturb: 'VSL', contas: 'Contas', notificacoes: 'Notificações', integracoes: 'Integrações' };
+  function sourceDot(x){ return x.key === 'newsbreak' ? 'on' : (x.key === 'taboola' && taboolaState.configured && taboolaState.ok) ? 'part' : ''; }
+  function sourcePanelText(key, what){
+    const x = TRAFFIC_SOURCES.find(t => t.key === key) || { label: key };
+    if (key === 'taboola') {
+      if (!taboolaState.configured) return 'Falta conectar o Taboola: cole o Client ID e o Client Secret em Integrações e clique em Testar.';
+      if (!taboolaState.ok) return 'As chaves do Taboola estão salvas, mas o Taboola não aceitou' + (taboolaState.status ? ' (status ' + taboolaState.status + ')' : '') + '. Confira em Integrações.';
+      const n = (taboolaState.accounts || []).length;
+      return 'Taboola conectado' + (n ? ' · ' + n + ' conta(s): ' + taboolaState.accounts.slice(0, 4).map(a => a.name).join(', ') : '') + '. ' + what + ' do Taboola é o próximo passo da construção.';
+    }
+    return 'A integração com ' + x.label + ' ainda não existe. Quando for construída, as chaves entram em Integrações.';
+  }
+  // ---------- Taboola: leitura (contas, campanhas, sites = "conjuntos", anúncios) ----------
+  const TB_API = 'https://pareto-console-api.prof-leosantana.workers.dev/taboola/';
+  let tbTab = loadPref('tbTab', 'campanhas'), tbAcct = '', tbCamp = null, tbSearch = '';
+  const tbCache = {};
+  const TB_STATUS = { RUNNING: ['Ativa', 'act'], PAUSED: ['Pausada', ''], PENDING_APPROVAL: ['Em análise', 'warn'], REJECTED: ['Recusada', 'warn'], DEPLETED: ['Orçamento esgotado', 'warn'], DEPLETED_MONTHLY: ['Esgotada no mês', 'warn'], PENDING_START_DATE: ['Agendada', ''], EXPIRED: ['Expirada', ''], FROZEN: ['Congelada', 'warn'], CRAWLING: ['Lendo imagem', ''] };
+  function tbReady(){ return campSource === 'taboola' && taboolaState.configured && taboolaState.ok; }
+  function tbRange(){ const d = periodDates(period); return [d[0], d[d.length - 1]]; }
+  function tbGet(kind, params){
+    const r = tbRange(), q = new URLSearchParams(Object.assign({ from: r[0], to: r[1] }, params || {}));
+    const key = kind + '?' + q.toString();
+    const c = tbCache[key] = tbCache[key] || {};
+    if (!c.loading && !(c.at && Date.now() - c.at < 20000)) {
+      c.loading = true;
+      fetch(TB_API + kind + '?' + q, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' })
+        .then(x => x.json().then(j => { if (!x.ok || j.error) throw new Error(j.error || 'falhou'); return j; }))
+        .then(j => { c.data = j; c.error = null; c.at = Date.now(); })
+        .catch(e => { c.error = friendlyError(e.message); c.at = Date.now(); })
+        .finally(() => { c.loading = false; if (!document.activeElement || !document.activeElement.matches('.tb-root input, .tb-root select')) renderSourcePanels(); });
+    }
+    return c;
+  }
+  function tbSum(list){
+    const t = { spent: 0, clicks: 0, impressions: 0, conversions: 0, revenue: 0 };
+    list.forEach(x => { t.spent += x.spent; t.clicks += x.clicks; t.impressions += x.impressions; t.conversions += x.conversions; t.revenue += x.revenue; });
+    t.cpc = t.clicks ? t.spent / t.clicks : 0; t.ctr = t.impressions ? t.clicks / t.impressions * 100 : 0; t.cpa = t.conversions ? t.spent / t.conversions : null;
+    return t;
+  }
+  const tbPct = v => (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+  const tbInt = v => (v || 0).toLocaleString('pt-BR');
+  function tbMetricCells(x){
+    return '<td class="num">' + fmtUSD(x.spent) + '</td><td class="num">' + tbInt(x.clicks) + '</td><td class="num cell-muted">' + fmtUSD(x.cpc) + '</td><td class="num cell-muted">' + tbInt(x.impressions) + '</td><td class="num cell-muted">' + tbPct(x.ctr) + '</td><td class="num">' + tbInt(x.conversions) + '</td><td class="num">' + (x.cpa === null ? '–' : fmtUSD(x.cpa)) + '</td>';
+  }
+  const TB_HEAD = '<th>Gasto</th><th>Cliques</th><th>CPC</th><th>Impr.</th><th>CTR</th><th>Conv.</th><th>CPA</th>';
+  function tbChip(txt, cls){ return '<span class="rule-chip ' + (cls || '') + '">' + ccEsc(txt) + '</span>'; }
+  function tbFresh(d){
+    const m = d && d.dataUpdatedAt ? String(d.dataUpdatedAt).match(/(\d{2}:\d{2})/) : null;
+    return '<p class="dre-intro tb-fresh">' + (m ? 'Dados do Taboola atualizados até <b>' + m[1] + '</b> (horário de Brasília). O Taboola atualiza por hora e pode corrigir números depois.' : 'O Taboola atualiza os números por hora e pode corrigi-los depois.') + '</p>';
+  }
+  function tbPeriodTabs(){ return '<div class="tabs period">' + PERIODS.map(p => '<button type="button" class="tab small' + (period === p.key ? ' active' : '') + '" data-tb-period="' + p.key + '">' + p.label + '</button>').join('') + '</div>'; }
+  function tbGoButtons(c){
+    const a = ' data-acc="' + ccEsc(c.account) + '" data-id="' + ccEsc(c.id) + '" data-name="' + ccEsc(c.name) + '"';
+    return '<button type="button" class="pill small" data-tb-go="sites"' + a + '>Sites</button> <button type="button" class="pill small" data-tb-go="anuncios"' + a + '>Anúncios</button>';
+  }
+  function tbTableCampanhas(d){
+    const q = tbSearch.trim().toLowerCase();
+    const rows = [];
+    d.accounts.forEach(a => a.campaigns.forEach(c => { if (c.status === 'TERMINATED') return; if (tbAcct && c.account !== tbAcct) return; if (q && (c.name + ' ' + c.accountName).toLowerCase().indexOf(q) === -1) return; rows.push(c); }));
+    rows.sort((x, y) => y.spent - x.spent);
+    if (!rows.length) return '<div class="empty-state">' + (d.accounts.some(a => a.campaigns.length) ? 'Nenhuma campanha com esse filtro.' : 'Ainda não há campanhas nas ' + d.accounts.length + ' contas do Taboola. Quando a primeira subir, ela aparece aqui.') + '</div>';
+    return '<div class="table-scroll"><table class="ctable" style="min-width:980px"><thead><tr><th style="text-align:left;">Estado</th><th style="text-align:left;">Campanha</th><th style="text-align:left;">Conta</th><th>Lance</th><th>Orç. diário</th>' + TB_HEAD + '<th></th></tr></thead><tbody>' + rows.map(c => {
+      const st = TB_STATUS[c.status] || [c.status, ''];
+      return '<tr><td style="text-align:left;">' + tbChip(st[0], st[1]) + (c.rejectReason ? '<div class="rule-line cell-muted">' + ccEsc(c.rejectReason) + '</div>' : '') + '</td><td style="text-align:left;"><b>' + ccEsc(c.name) + '</b></td><td class="cell-muted" style="text-align:left;">' + ccEsc(c.accountName) + '</td><td class="num cell-muted">' + (c.bid === null ? '–' : fmtUSD(c.bid)) + '</td><td class="num cell-muted">' + (c.dailyCap === null ? '–' : fmtUSD(c.dailyCap)) + '</td>' + tbMetricCells(c) +
+        '<td style="white-space:nowrap;">' + tbGoButtons(c) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  }
+  function tbTableSites(){
+    const params = {}; if (tbCamp) { params.account = tbCamp.account; params.campaign = tbCamp.id; } else if (tbAcct) params.account = tbAcct;
+    const c = tbGet('sites', params);
+    if (!c.data) return '<div class="empty-state">' + (c.error || 'Carregando sites…') + '</div>';
+    const q = tbSearch.trim().toLowerCase();
+    const rows = c.data.sites.filter(x => !q || (x.site + ' ' + x.accountName).toLowerCase().indexOf(q) !== -1);
+    return tbFresh(c.data) + (rows.length ? '<div class="table-scroll"><table class="ctable" style="min-width:860px"><thead><tr><th style="text-align:left;">Site</th><th style="text-align:left;">Conta</th>' + TB_HEAD + '</tr></thead><tbody>' + rows.map(x => '<tr><td style="text-align:left;"><b>' + ccEsc(x.site) + '</b></td><td class="cell-muted" style="text-align:left;">' + ccEsc(x.accountName) + '</td>' + tbMetricCells(x) + '</tr>').join('') + '</tbody></table></div>' : '<div class="empty-state">O Taboola só lista o site depois que ele recebe o primeiro clique. Ainda não há sites com cliques neste período.</div>');
+  }
+  function tbTableAnuncios(){
+    if (!tbCamp) return '<div class="empty-state">Escolha uma campanha na aba Campanhas (botão Anúncios) para ver os anúncios dela.</div>';
+    const c = tbGet('items', { account: tbCamp.account, campaign: tbCamp.id });
+    if (!c.data) return '<div class="empty-state">' + (c.error || 'Carregando anúncios…') + '</div>';
+    const q = tbSearch.trim().toLowerCase();
+    const rows = c.data.items.filter(x => !q || x.title.toLowerCase().indexOf(q) !== -1);
+    return tbFresh(c.data) + (rows.length ? '<div class="table-scroll"><table class="ctable" style="min-width:900px"><thead><tr><th style="text-align:left;">Anúncio</th><th style="text-align:left;">Aprovação</th>' + TB_HEAD + '</tr></thead><tbody>' + rows.map(x => {
+      const ap = x.approval === 'REJECTED' ? tbChip('Recusado', 'warn') + (x.rejectReason ? '<div class="rule-line cell-muted">' + ccEsc(x.rejectReason) + '</div>' : '') : x.approval === 'PENDING' ? tbChip('Em análise', '') : x.approval === 'APPROVED' ? tbChip('Aprovado', 'act') : '–';
+      return '<tr><td style="text-align:left;"><div style="display:flex;gap:10px;align-items:center;">' + (x.thumbnail ? '<img src="' + ccEsc(x.thumbnail) + '" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">' : '') + '<b>' + ccEsc(x.title) + '</b></div></td><td style="text-align:left;">' + ap + '</td>' + tbMetricCells(x) + '</tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="empty-state">Nenhum anúncio nesta campanha.</div>');
+  }
+  function tbBody(ov){ return tbTab === 'sites' ? tbTableSites() : tbTab === 'anuncios' ? tbTableAnuncios() : tbFresh(ov.data) + tbTableCampanhas(ov.data); }
+  function tbHtml(mode){
+    const ov = tbGet('overview');
+    if (!ov.data) return tbPeriodTabs() + '<div class="empty-state">' + (ov.error ? ov.error : 'Carregando dados do Taboola…') + '</div>';
+    const d = ov.data, all = [].concat.apply([], d.accounts.map(a => a.campaigns));
+    const failed = d.accounts.filter(a => !a.ok);
+    const warn = failed.length ? '<p class="dre-intro" style="color:var(--bad);">Não consegui ler ' + failed.map(a => ccEsc(a.name)).join(', ') + ' agora' + (failed[0].status ? ' (status ' + failed[0].status + ')' : '') + '. As outras contas aparecem normalmente.</p>' : '';
+    if (mode === 'dash') {
+      const t = tbSum(d.accounts.map(a => a.total));
+      const cards = [['Gasto', fmtUSD(t.spent)], ['Cliques', tbInt(t.clicks)], ['CPC médio', fmtUSD(t.cpc)], ['Conversões', tbInt(t.conversions)], ['CPA', t.cpa === null ? '–' : fmtUSD(t.cpa)]];
+      return tbPeriodTabs() + warn + '<section class="summary-grid">' + cards.map(c => '<div class="card"><div class="card-label"><span>' + c[0] + '</span></div><div class="card-spend num">' + c[1] + '</div></div>').join('') + '</section>' +
+        '<div class="table-scroll"><table class="ctable" style="min-width:760px"><thead><tr><th style="text-align:left;">Conta</th><th style="text-align:left;">Campanhas</th>' + TB_HEAD + '</tr></thead><tbody>' + d.accounts.map(a => '<tr><td style="text-align:left;"><b>' + ccEsc(a.name) + '</b></td><td class="cell-muted" style="text-align:left;">' + a.campaigns.filter(c => c.status !== 'TERMINATED').length + '</td>' + tbMetricCells(a.total) + '</tr>').join('') + '</tbody></table></div>' + tbFresh(d) +
+        (all.length ? '' : '<div class="empty-state">Ainda não há campanhas nas ' + d.accounts.length + ' contas. Quando a primeira subir, os números aparecem aqui.</div>');
+    }
+    const tabs = [['campanhas', 'Campanhas'], ['sites', 'Sites'], ['anuncios', 'Anúncios']];
+    const accSel = '<select data-tb-acct><option value="">Todas as contas</option>' + d.accounts.map(a => '<option value="' + ccEsc(a.id) + '"' + (tbAcct === a.id ? ' selected' : '') + '>' + ccEsc(a.name) + '</option>').join('') + '</select>';
+    const campChip = tbCamp ? '<span class="rule-chip act">Campanha: ' + ccEsc(tbCamp.name) + ' <button type="button" class="tb-x" data-tb-clear title="Tirar filtro">✕</button></span>' : '';
+    return tbPeriodTabs() + warn + '<div class="tb-bar"><div class="tabs" style="margin:0;">' + tabs.map(t => '<button type="button" class="tab small' + (tbTab === t[0] ? ' active' : '') + '" data-tb-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' + accSel + '<input type="text" data-tb-search placeholder="Buscar…" value="' + ccEsc(tbSearch) + '">' + campChip + '</div><div id="tbTableBox">' + tbBody(ov) + '</div>';
+  }
+  function tbBindGo(root){
+    root.querySelectorAll('[data-tb-go]').forEach(b => b.addEventListener('click', () => { tbCamp = { account: b.dataset.acc, id: b.dataset.id, name: b.dataset.name }; tbTab = b.dataset.tbGo; savePref('tbTab', tbTab); renderSourcePanels(); }));
+  }
+  function tbMount(el, mode){
+    if (!el) return;
+    el.classList.remove('empty-state'); el.classList.add('tb-root');
+    el.innerHTML = tbHtml(mode);
+    el.querySelectorAll('[data-tb-period]').forEach(b => b.addEventListener('click', () => { period = b.dataset.tbPeriod; savePref('period', period); renderAll(); }));
+    el.querySelectorAll('[data-tb-tab]').forEach(b => b.addEventListener('click', () => { tbTab = b.dataset.tbTab; tbSearch = ''; savePref('tbTab', tbTab); renderSourcePanels(); }));
+    tbBindGo(el);
+    const clr = el.querySelector('[data-tb-clear]'); if (clr) clr.addEventListener('click', () => { tbCamp = null; renderSourcePanels(); });
+    const sel = el.querySelector('[data-tb-acct]'); if (sel) sel.addEventListener('change', () => { tbAcct = sel.value; renderSourcePanels(); });
+    const inp = el.querySelector('[data-tb-search]');
+    if (inp) inp.addEventListener('input', () => { tbSearch = inp.value; const box = el.querySelector('#tbTableBox'), ov = tbGet('overview'); if (box && ov.data) { box.innerHTML = tbBody(ov); tbBindGo(box); } });
+  }
+  function tbUnmount(el){ if (el && el.classList.contains('tb-root')) { el.classList.remove('tb-root'); el.classList.add('empty-state'); } }
+  setInterval(() => { if (tbReady() && (view === 'painel' || view === 'campanhas') && !document.hidden && !(document.activeElement && document.activeElement.matches('.tb-root input, .tb-root select'))) { Object.keys(tbCache).forEach(k => { if (tbCache[k]) tbCache[k].at = 0; }); renderSourcePanels(); } }, 30000);
+  // ---------- /Taboola leitura ----------
+
+  // ---------- Taboola: Regras — duas seções separadas: "Regras condicionais" (por site, como no NB) e "Regras de sites" (bloqueio por nome na conta) ----------
+  let tbrData = null, tbrErr = '', tbrPreview = null, tbrBusy = false, tbrSection = loadPref('tbrSection', 'cond');
+  const TBR_METRIC_LABEL = { cost: 'Gasto ($)', clicks: 'Cliques', impressions: 'Impressões', conversions: 'Conversões', cpa: 'CPA ($)', cpc: 'CPC ($)', ctr: 'CTR (%)' };
+  const TBR_MODES = [['off', 'Desligado', 'Não avalia nada.'], ['notify', 'Só avisar', 'Avalia e avisa no celular o que FARIA, sem mexer em nada no Taboola.'], ['on', 'Agir', 'Bloqueia de verdade no Taboola.']];
+  const TBR_IC = {
+    play: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l13 8-13 8z"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    del: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>'
+  };
+  function tbrApi(path, method, body){
+    return fetch(TB_API + 'rules' + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok || j.error) throw new Error(j.error || 'falhou'); return j; }));
+  }
+  function tbrLoad(){ return tbrApi().then(j => { tbrData = j; tbrErr = ''; }).catch(e => { tbrErr = friendlyError(e.message); }).finally(() => { if (view === 'regras') renderSourcePanels(); }); }
+  function tbrErrText(code){ return ({ patterns_invalid: 'Informe pelo menos um prefixo (2 a 60 letras).', name_required: 'Dê um nome à regra.', conditions_invalid: 'Adicione pelo menos uma condição.', condition_invalid: 'Confira os valores das condições.', too_many_rules: 'Limite de regras atingido.' })[code] || friendlyError(code); }
+  function tbrAccounts(){ const ov = tbGet('overview'); return ov.data ? ov.data.accounts.map(a => ({ id: a.id, name: a.name })) : []; }
+  function tbrCondText(c){ return TBR_METRIC_LABEL[c.metric] + ' ' + c.op + ' ' + c.value; }
+  function tbrScopeText(r){ const n = (r.accounts || []).length; return n ? n + (n === 1 ? ' conta' : ' contas') : 'Todas as contas'; }
+  function tbrSheet(inner){
+    const el = document.createElement('div'); el.className = 'assign-sheet'; el.innerHTML = '<div class="assign-sheet-card rej-card" role="dialog" aria-modal="true" style="max-width:560px;max-height:90vh;overflow:auto;">' + inner + '</div>';
+    el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+    document.body.appendChild(el); return el;
+  }
+  function tbrAccPicker(selected){
+    const accs = tbrAccounts();
+    return '<div class="rule-lbl full">Contas<div class="tbr-accs"><label class="rule-notify" style="margin:4px 0;"><input type="checkbox" data-tbr-allacc' + (!(selected || []).length ? ' checked' : '') + '> Todas as contas</label>' + accs.map(a => '<label class="rule-notify" style="margin:4px 0 4px 18px;"><input type="checkbox" data-tbr-acc="' + ccEsc(a.id) + '"' + ((selected || []).indexOf(a.id) !== -1 ? ' checked' : '') + '> ' + ccEsc(a.name) + '</label>').join('') + '</div></div>';
+  }
+  function tbrReadAccs(root){
+    if (root.querySelector('[data-tbr-allacc]').checked) return [];
+    return [...root.querySelectorAll('[data-tbr-acc]')].filter(c => c.checked).map(c => c.dataset.tbrAcc);
+  }
+  function tbrWireAccs(root){
+    const all = root.querySelector('[data-tbr-allacc]'), each = [...root.querySelectorAll('[data-tbr-acc]')];
+    all.addEventListener('change', () => { if (all.checked) each.forEach(c => { c.checked = false; }); });
+    each.forEach(c => c.addEventListener('change', () => { if (c.checked) all.checked = false; else if (!each.some(x => x.checked)) all.checked = true; }));
+  }
+  // ----- editor: regra condicional -----
+  function tbrCondRow(c, first){
+    const sel = (attr, opts, cur) => '<select ' + attr + '>' + opts.map(o => '<option value="' + o[0] + '"' + (String(cur) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+    return '<div class="rule-cond">' + (first ? '<span class="cell-muted" style="font-size:12.5px;">Se</span>' : sel('data-cond="join"', [['and', 'E'], ['or', 'OU']], c.join)) + sel('data-cond="metric"', Object.keys(TBR_METRIC_LABEL).map(k => [k, TBR_METRIC_LABEL[k]]), c.metric) + sel('data-cond="op"', ['>', '>=', '<', '<=', '='].map(x => [x, x]), c.op) + '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Tirar">×</button></div>';
+  }
+  function openTbrCondSheet(rule){
+    const r = rule || { name: '', accounts: [], conditions: [{ metric: 'cost', op: '>=', value: 50, join: 'and' }, { metric: 'conversions', op: '=', value: 0, join: 'and' }], action: { type: 'block_site' }, notify: true, enabled: true };
+    const el = tbrSheet('<div class="assign-sheet-title">' + (rule ? 'Editar regra condicional' : 'Nova regra condicional') + '</div>' +
+      '<div class="rej-form"><label>Nome <input type="text" data-f="name" maxlength="120" placeholder="Ex.: Site gastou $50 sem venda" value="' + ccEsc(r.name) + '"></label></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Onde vale</div><div class="rule-grid">' + tbrAccPicker(r.accounts) + '</div></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Quando (E = as duas ao mesmo tempo · OU = basta uma) — sobre os últimos 30 dias do site dentro da campanha</div><div data-conds></div><button type="button" class="bell-pop-link" data-addcond>+ Adicionar condição</button></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Então</div><div class="rule-grid"><label>Ação <select data-f="action"><option value="block_site"' + (r.action.type === 'block_site' ? ' selected' : '') + '>Bloquear o site nessa campanha</option><option value="notify"' + (r.action.type === 'notify' ? ' selected' : '') + '>Só avisar (sem fazer nada)</option></select></label></div>' +
+      '<label class="rule-notify"><input type="checkbox" data-f="notify"' + (r.notify !== false ? ' checked' : '') + '> Receber notificação no celular quando a regra agir</label></div>' +
+      '<div class="rej-summary" data-msg></div><button type="button" class="assign-sheet-close" data-save>Salvar regra</button><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    tbrWireAccs(el);
+    let conds = r.conditions.map(c => ({ ...c }));
+    const box = el.querySelector('[data-conds]');
+    const readConds = () => [...box.querySelectorAll('.rule-cond')].map((row, i) => ({ metric: row.querySelector('[data-cond=metric]').value, op: row.querySelector('[data-cond=op]').value, value: Number(row.querySelector('[data-cond=value]').value), join: i === 0 ? 'and' : row.querySelector('[data-cond=join]').value }));
+    const drawConds = () => { box.innerHTML = conds.map((c, i) => tbrCondRow(c, i === 0)).join(''); box.querySelectorAll('[data-cond-del]').forEach(b => b.addEventListener('click', () => { if (conds.length > 1) { conds = readConds(); conds.splice([...box.children].indexOf(b.closest('.rule-cond')), 1); drawConds(); } })); };
+    drawConds();
+    el.querySelector('[data-addcond]').addEventListener('click', () => { if (conds.length < 8) { conds = readConds(); conds.push({ metric: 'clicks', op: '>=', value: 10, join: 'and' }); drawConds(); } });
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+    el.querySelector('[data-save]').addEventListener('click', () => {
+      const msg = el.querySelector('[data-msg]'); msg.textContent = 'Salvando…';
+      const act = el.querySelector('[data-f=action]').value;
+      const body = { id: rule ? rule.id : undefined, type: 'site_optimize', name: el.querySelector('[data-f=name]').value, enabled: r.enabled !== false, accounts: tbrReadAccs(el), conditions: readConds(), action: { type: act }, notify: act === 'notify' ? true : el.querySelector('[data-f=notify]').checked };
+      tbrApi('', 'POST', body).then(() => tbrLoad()).then(() => el.remove()).catch(e => { msg.textContent = tbrErrText(e.message); });
+    });
+  }
+  // ----- editor: regra de sites (bloqueio por prefixo) -----
+  function openTbrSiteSheet(rule){
+    const r = rule || { name: '', accounts: [], patterns: [], minClicks: 1, notify: true, enabled: true };
+    const el = tbrSheet('<div class="assign-sheet-title">' + (rule ? 'Editar regra de sites' : 'Nova regra de sites') + '</div>' +
+      '<div class="rej-form"><label>Nome <input type="text" data-f="name" maxlength="120" placeholder="Ex.: ume - digiconnect" value="' + ccEsc(r.name) + '"></label></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Prefixos (um por linha)</div><textarea data-f="patterns" rows="3" placeholder="UME-" style="width:100%;padding:8px 9px;font-size:13.5px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--bg);color:var(--ink);font-family:inherit;resize:vertical;">' + ccEsc((r.patterns || []).join('\n')) + '</textarea><div class="rule-line cell-muted">O site é bloqueado se o <b>nome</b> contém algum desses trechos. Vale para a conta toda, sem o limite de 1.500 sites da campanha. O Taboola só lista o site depois do primeiro clique.</div></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Quando</div><div class="rule-grid"><label>Bloquear a partir de quantos cliques <input type="number" min="1" data-f="minClicks" value="' + ccEsc(r.minClicks) + '"></label></div></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Onde vale</div><div class="rule-grid">' + tbrAccPicker(r.accounts) + '</div><label class="rule-notify"><input type="checkbox" data-f="notify"' + (r.notify !== false ? ' checked' : '') + '> Receber notificação no celular quando bloquear</label></div>' +
+      '<div class="rej-summary" data-msg></div><button type="button" class="assign-sheet-close" data-save>Salvar regra</button><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    tbrWireAccs(el);
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+    el.querySelector('[data-save]').addEventListener('click', () => {
+      const msg = el.querySelector('[data-msg]'); msg.textContent = 'Salvando…';
+      const body = { id: rule ? rule.id : undefined, type: 'block_pattern', name: el.querySelector('[data-f=name]').value, enabled: r.enabled !== false, accounts: tbrReadAccs(el), patterns: el.querySelector('[data-f=patterns]').value, minClicks: Number(el.querySelector('[data-f=minClicks]').value), notify: el.querySelector('[data-f=notify]').checked };
+      tbrApi('', 'POST', body).then(() => tbrLoad()).then(() => el.remove()).catch(e => { msg.textContent = tbrErrText(e.message); });
+    });
+  }
+  // ----- janelas: sites bloqueados e histórico -----
+  function openTbrBlocked(rule){
+    const el = tbrSheet('<div class="assign-sheet-title">Sites bloqueados</div><div class="rule-line cell-muted" style="margin-bottom:10px;">Sites bloqueados pela regra "' + ccEsc(rule.name) + '"</div><div data-body><div class="empty-state">Carregando…</div></div><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+    tbrApi('/' + encodeURIComponent(rule.id) + '/blocked').then(j => {
+      const when = t => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      el.querySelector('[data-body]').innerHTML = j.sites.length ? '<div class="table-scroll"><table style="min-width:420px"><thead><tr><th style="text-align:left;">Site</th><th style="text-align:left;">Prefixo</th><th style="text-align:left;">Bloqueado em</th></tr></thead><tbody>' + j.sites.map(x => '<tr><td style="text-align:left;"><b>' + ccEsc(x.site) + '</b><div class="cell-muted" style="font-size:11.5px;">' + ccEsc(x.siteId) + ' · ' + ccEsc(x.account) + '</div></td><td style="text-align:left;">' + tbChip(x.prefix || '–', '') + '</td><td style="text-align:left;">' + (x.simulated ? tbChip('previsto (só aviso)', 'warn') + '<div class="cell-muted" style="font-size:11.5px;">' + when(x.at) + '</div>' : when(x.at)) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty-state">Esta regra ainda não bloqueou nenhum site.</div>';
+    }).catch(e => { el.querySelector('[data-body]').innerHTML = '<div class="empty-state">' + tbrErrText(e.message) + '</div>'; });
+  }
+  function openTbrHistory(ruleId){
+    const rows = (tbrData.log || []).filter(l => l.kind !== 'block_account' && (!ruleId || l.ruleId === ruleId));
+    const el = tbrSheet('<div class="assign-sheet-title">Histórico</div><div data-body>' + (rows.length ? '<div class="table-scroll"><table style="min-width:520px"><thead><tr><th style="text-align:left;">Quando</th><th style="text-align:left;">Regra</th><th style="text-align:left;">Site / campanha</th><th>Cliques</th><th>Gasto</th><th style="text-align:left;">Resultado</th></tr></thead><tbody>' + rows.slice(0, 60).map(l => '<tr><td style="text-align:left;">' + new Date(l.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</td><td style="text-align:left;">' + ccEsc(l.ruleName) + '</td><td style="text-align:left;"><b>' + ccEsc(l.site) + '</b><div class="cell-muted" style="font-size:11.5px;">' + ccEsc(l.account) + (l.campaign ? ' · ' + ccEsc(l.campaign) : '') + '</div></td><td class="num">' + tbInt(l.metrics.clicks) + '</td><td class="num">' + fmtUSD(l.metrics.cost) + '</td><td style="text-align:left;">' + tbChip(l.result, l.result === 'feito' ? 'act' : l.result === 'erro' ? 'warn' : '') + ' <span class="cell-muted">' + ccEsc(l.detail || '') + '</span></td></tr>').join('') + '</tbody></table></div>' : '<div class="empty-state">Nenhuma ação ainda.</div>') + '</div><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+  }
+  // ----- telas -----
+  function tbrCondHtml(){
+    const rules = tbrData.rules.filter(r => r.type === 'site_optimize');
+    const prev = tbrPreview ? '<section class="panel" style="margin:12px 18px 0;"><div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Teste agora (nada é executado)</span></div></div><div class="rules-pad" style="padding:6px 16px 14px;">' + (tbrPreview.wouldDo.filter(w => w.action !== 'block_account').length ? tbrPreview.wouldDo.filter(w => w.action !== 'block_account').map(w => '<div class="rule-line">' + ccEsc(w.site) + ' · ' + ccEsc(w.account) + (w.campaign ? ' · ' + ccEsc(w.campaign) : '') + ' — ' + (w.action === 'block_campaign_site' ? 'bloquear na campanha' : 'avisar') + ' (' + ccEsc(w.rule) + ', ' + w.metrics.clicks + ' cliques, $' + w.metrics.cost + ')</div>').join('') : '<div class="rule-line cell-muted">Agora nenhuma regra condicional faria nada.</div>') + '</div></section>' : '';
+    return '<div class="step-head"><div class="step-head-left"><span class="step-title">Regras condicionais</span></div><div class="rules-head-actions"><button type="button" class="select-all-btn" data-tbr-preview' + (tbrBusy ? ' disabled' : '') + '>' + (tbrBusy ? 'Verificando…' : 'Testar agora') + '</button><button type="button" class="select-all-btn" data-tbr-hist>Histórico</button><button type="button" class="rej-edit-btn" data-tbr-new-cond>Nova regra</button></div><span class="step-desc">Cada regra olha o <b>site</b> dentro da campanha (nunca a campanha), a cada minuto, com os números acumulados dos últimos 30 dias. O Taboola atualiza por hora, então os números podem atrasar um pouco.</span></div>' + prev +
+      (rules.length ? rules.map(r => '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div><div class="rule-name">' + ccEsc(r.name) + '</div><div class="rule-line">' + r.conditions.map((c, i) => (i ? '<span class="rule-join">' + (c.join === 'or' ? 'OU' : 'E') + '</span>' : '') + '<span class="rule-chip">' + ccEsc(tbrCondText(c)) + '</span>').join('') + '<span class="rule-join">→</span><span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">' + (r.action.type === 'block_site' ? 'Bloquear o site na campanha' : 'Só avisar') + '</span>' + (r.action.type !== 'notify' && r.notify !== false ? '<span class="rule-chip">avisa no celular</span>' : '') + '</div><div class="rule-line">' + ccEsc(tbrScopeText(r)) + '</div></div><div class="rule-actions"><label class="switch" title="' + (r.enabled ? 'Ligada' : 'Desligada') + '"><input type="checkbox" data-tbr-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label><button type="button" data-tbr-rhist="' + ccEsc(r.id) + '">Histórico</button><button type="button" data-tbr-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-tbr-del="' + ccEsc(r.id) + '">Excluir</button></div></div>').join('') : '<div class="empty-state">Nenhuma regra condicional ainda. Clique em "Nova regra".</div>');
+  }
+  function tbrSitesHtml(){
+    const rules = tbrData.rules.filter(r => r.type === 'block_pattern');
+    return '<div class="step-head"><div class="step-head-left"><span class="step-title">Regras de sites</span></div><div class="rules-head-actions"><button type="button" class="select-all-btn" data-tbr-example>Exemplo: rede UME</button><button type="button" class="rej-edit-btn" data-tbr-new-site>Nova regra</button></div><span class="step-desc">Bloqueia sites <b>na conta toda</b> quando o nome contém um prefixo e o site teve cliques. Roda a cada minuto e vale para as 4 contas. Rede inteira só o gerente de conta do Taboola consegue bloquear.</span></div>' +
+      (rules.length ? '<div class="table-scroll"><table class="tbr-table"><thead><tr><th style="text-align:left;">Nome</th><th>Bloqueados</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead><tbody>' + rules.map(r => {
+        const n = r.blockedCount || 0, sim = r.simCount || 0;
+        return '<tr><td style="text-align:left;"><b>' + ccEsc(r.name) + '</b><div class="cell-muted" style="font-size:11.5px;">' + r.patterns.map(ccEsc).join(', ') + ' · ≥ ' + r.minClicks + (r.minClicks === 1 ? ' clique' : ' cliques') + ' · ' + ccEsc(tbrScopeText(r)) + '</div></td><td>' + tbChip(n + (n === 1 ? ' site' : ' sites'), n ? 'warn' : '') + (sim ? ' <span class="cell-muted" style="font-size:11.5px;" title="Só aviso: ainda não bloqueou de verdade">+' + sim + ' previsto' + (sim === 1 ? '' : 's') + '</span>' : '') + '</td><td><label class="switch" style="vertical-align:middle;"><input type="checkbox" data-tbr-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label> <span class="cell-muted" style="margin-left:6px;">' + (r.enabled ? 'Ativa' : 'Pausada') + '</span></td><td style="text-align:right;white-space:nowrap;"><button type="button" class="tbr-ic" data-tbr-run="' + ccEsc(r.id) + '" title="Executar agora">' + TBR_IC.play + '</button><button type="button" class="tbr-ic" data-tbr-blocked="' + ccEsc(r.id) + '" title="Ver sites bloqueados">' + TBR_IC.eye + '</button><button type="button" class="tbr-ic" data-tbr-edit="' + ccEsc(r.id) + '" title="Editar">' + TBR_IC.edit + '</button><button type="button" class="tbr-ic bad" data-tbr-del="' + ccEsc(r.id) + '" title="Excluir">' + TBR_IC.del + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>' : '<div class="empty-state">Nenhuma regra de sites ainda. Comece pelo exemplo da rede UME.</div>');
+  }
+  function tbrHtml(){
+    if (!tbrData) return '<div class="empty-state">' + (tbrErr || 'Carregando regras do Taboola…') + '</div>';
+    const mode = tbrData.mode;
+    const modes = '<div class="tbr-modes">' + TBR_MODES.map(m => '<button type="button" class="tab small' + (mode === m[0] ? ' active' : '') + '" data-tbr-mode="' + m[0] + '" title="' + ccEsc(m[2]) + '">' + m[1] + '</button>').join('') + '</div>';
+    const note = '<span class="cell-muted" style="font-size:12.5px;">' + ccEsc(TBR_MODES.find(m => m[0] === mode)[2]) + (mode === 'on' ? ' <b>As regras estão agindo no Taboola.</b>' : '') + '</span>';
+    const tabs = '<div class="tabs" style="margin:14px 0 0;">' + [['cond', 'Regras condicionais'], ['sites', 'Regras de sites']].map(t => '<button type="button" class="tab' + (tbrSection === t[0] ? ' active' : '') + '" data-tbr-sec="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+    return '<div class="tbr-top"><div><div class="integ-subhead" style="border:0;padding:0 0 6px;">Motor das regras do Taboola</div>' + modes + '</div><div style="align-self:flex-end;">' + note + '</div></div>' + tabs +
+      '<section class="panel tbr-panel">' + (tbrSection === 'sites' ? tbrSitesHtml() : tbrCondHtml()) + '</section>';
+  }
+  function tbrMount(el){
+    if (!el) return;
+    if (!tbrData && !tbrErr && !tbrBusy) tbrLoad();
+    el.classList.remove('empty-state'); el.classList.add('tb-root');
+    if (el.contains(document.activeElement) && document.activeElement.matches('input, textarea, select')) return;
+    el.innerHTML = tbrHtml();
+    if (!tbrData) return;
+    const rr = () => { renderSourcePanels(); };
+    const rule = id => tbrData.rules.find(x => x.id === id);
+    el.querySelectorAll('[data-tbr-sec]').forEach(b => b.addEventListener('click', () => { tbrSection = b.dataset.tbrSec; savePref('tbrSection', tbrSection); rr(); }));
+    el.querySelectorAll('[data-tbr-mode]').forEach(b => b.addEventListener('click', () => {
+      const m = b.dataset.tbrMode; if (m === tbrData.mode) return;
+      if (m === 'on' && !confirm('Ligar o modo AGIR? As regras vão bloquear sites de verdade no Taboola, sozinhas, a cada minuto.')) return;
+      tbrApi('/mode', 'POST', { mode: m }).then(() => { tbrData.mode = m; rr(); }).catch(e => alert(tbrErrText(e.message)));
+    }));
+    el.querySelectorAll('[data-tbr-toggle]').forEach(c => c.addEventListener('change', () => { const r = rule(c.dataset.tbrToggle); tbrApi('', 'POST', Object.assign({}, r, { enabled: c.checked })).then(() => tbrLoad()).catch(e => { c.checked = !c.checked; alert(tbrErrText(e.message)); }); }));
+    el.querySelectorAll('[data-tbr-del]').forEach(b => b.addEventListener('click', () => { const r = rule(b.dataset.tbrDel); if (r && confirm('Excluir a regra "' + r.name + '"?' + (r.type === 'block_pattern' ? ' Os sites que ela já bloqueou continuam bloqueados no Taboola.' : ''))) tbrApi('/' + encodeURIComponent(r.id), 'DELETE').then(() => tbrLoad()).catch(e => alert(tbrErrText(e.message))); }));
+    el.querySelectorAll('[data-tbr-edit]').forEach(b => b.addEventListener('click', () => { const r = rule(b.dataset.tbrEdit); if (r) (r.type === 'block_pattern' ? openTbrSiteSheet : openTbrCondSheet)(r); }));
+    const nc = el.querySelector('[data-tbr-new-cond]'); if (nc) nc.addEventListener('click', () => openTbrCondSheet(null));
+    const ns = el.querySelector('[data-tbr-new-site]'); if (ns) ns.addEventListener('click', () => openTbrSiteSheet(null));
+    const ex = el.querySelector('[data-tbr-example]'); if (ex) ex.addEventListener('click', () => openTbrSiteSheet({ name: 'Rede UME', accounts: [], patterns: ['UME-'], minClicks: 1, notify: true, enabled: true }));
+    el.querySelectorAll('[data-tbr-blocked]').forEach(b => b.addEventListener('click', () => openTbrBlocked(rule(b.dataset.tbrBlocked))));
+    el.querySelectorAll('[data-tbr-run]').forEach(b => b.addEventListener('click', () => {
+      const r = rule(b.dataset.tbrRun);
+      if (tbrData.mode === 'off') { alert('O motor das regras do Taboola está desligado. Escolha "Só avisar" ou "Agir" no topo.'); return; }
+      if (tbrData.mode === 'on' && !confirm('Executar "' + r.name + '" agora? O modo é AGIR: ela vai bloquear de verdade no Taboola.')) return;
+      b.disabled = true;
+      tbrApi('/' + encodeURIComponent(r.id) + '/run', 'POST', {}).then(j => { alert(j.actions ? (j.mode === 'on' ? j.actions + ' site(s) bloqueado(s).' : j.actions + ' site(s) seriam bloqueados (modo Só avisar, nada foi alterado).') : 'Avaliou ' + (j.evaluated || 0) + ' site(s): nenhum para bloquear agora.'); return tbrLoad(); }).catch(e => alert(tbrErrText(e.message))).finally(() => { b.disabled = false; });
+    }));
+    const pv = el.querySelector('[data-tbr-preview]'); if (pv) pv.addEventListener('click', () => { tbrBusy = true; tbrPreview = null; rr(); tbrApi('/preview', 'POST', {}).then(j => { tbrPreview = j; }).catch(e => { alert(tbrErrText(e.message)); }).finally(() => { tbrBusy = false; rr(); }); });
+    const hi = el.querySelector('[data-tbr-hist]'); if (hi) hi.addEventListener('click', () => openTbrHistory(null));
+    el.querySelectorAll('[data-tbr-rhist]').forEach(b => b.addEventListener('click', () => openTbrHistory(b.dataset.tbrRhist)));
+  }
+  // ---------- /Taboola Regras ----------
+
+  function renderSourcePanels(){
+    const x = TRAFFIC_SOURCES.find(t => t.key === campSource) || TRAFFIC_SOURCES[0];
+    const WHAT = { painelView: 'O Dashboard', rejeicoesView: 'A aba Rejeições', regrasView: 'A aba Regras' };
+    Object.keys(WHAT).forEach(id => {
+      const panel = document.querySelector('#' + id + ' .src-other-panel'); if (!panel) return;
+      panel.querySelector('[data-src-title]').textContent = x.label;
+      const body = panel.querySelector('[data-src-body]');
+      if (tbReady() && id === 'painelView') { if (view === 'painel') tbMount(body, 'dash'); return; }
+      if (tbReady() && id === 'regrasView') { if (view === 'regras') tbrMount(body); return; }
+      tbUnmount(body); body.textContent = sourcePanelText(campSource, WHAT[id]);
+    });
+    if (campSource !== 'newsbreak') {
+      const cb = document.getElementById('campOtherBody');
+      if (cb) { if (tbReady()) { if (view === 'campanhas') tbMount(cb, 'camp'); } else { tbUnmount(cb); cb.textContent = sourcePanelText(campSource, 'A aba Campanhas'); } }
+      const cr = document.getElementById('criarOtherBody'); if (cr) cr.textContent = sourcePanelText(campSource, 'Criar campanha');
+    }
+  }
+  function setSource(key){
+    if (!TRAFFIC_SOURCES.some(x => x.key === key)) return;
+    campSource = key; criarSource = key;
+    savePref('source', key); savePref('campSource', key); savePref('criarSource', key);
+    renderAll();
+    try { renderCriarSubNav(); } catch (e) {}
+    renderSourcePanels();
+  }
+  function loadTaboolaState(){
+    return fetch(TABOOLA_STATUS_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json())
+      .then(j => { taboolaState = { configured: !!j.configured, ok: !!j.ok, status: j.status, accounts: j.accounts || [], connections: j.connections || [] }; renderCampSourcePills(); renderSourcePanels(); if (view === 'integracoes' && integOpen === 'taboola' && !document.activeElement.matches('#integList input')) renderIntegrations(); })
+      .catch(() => {});
+  }
 
   let mapaPeriod = loadPref('mapaPeriod', 'month');
   let mapaData = null;
@@ -3213,13 +3597,9 @@
   function renderCampSourcePills(){
     document.querySelectorAll('.source-pills').forEach(el => {
       el.innerHTML = TRAFFIC_SOURCES.map(x =>
-        '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '">' + x.label + '</button>'
+        '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '"><span class="src-dot ' + sourceDot(x) + '"></span>' + x.label + '</button>'
       ).join('');
-      el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => {
-        campSource = btn.dataset.source;
-        savePref('campSource', campSource);
-        renderCampanhas();
-      }));
+      el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => setSource(btn.dataset.source)));
     });
   }
 
@@ -3231,7 +3611,7 @@
     document.getElementById('campOtherPanel').hidden = src.connected;
     if (!src.connected){
       document.getElementById('campOtherHead').textContent = 'Campanhas — ' + src.label;
-      document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
+      if (tbReady()) renderSourcePanels(); else document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
       return;
     }
     if (!campV2Ready) { campV2Ready = true; initCampV2(); }
@@ -3389,8 +3769,10 @@
   document.addEventListener('click', (e) => { const pop = document.getElementById('balancePop'); if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
 
   function renderPageTitle(){
-    const src = (view === 'criar' && criarSource) ? TRAFFIC_SOURCES.find(x => x.key === criarSource) : null;
-    document.getElementById('pageTitle').textContent = src ? src.label : 'NewsBreak';
+    const scoped = SOURCE_SCOPED_VIEWS.indexOf(view) !== -1;
+    const src = TRAFFIC_SOURCES.find(x => x.key === campSource) || TRAFFIC_SOURCES[0];
+    document.body.dataset.sourceOther = (scoped && campSource !== 'newsbreak') ? '1' : '';
+    document.getElementById('pageTitle').textContent = scoped ? src.label : (VIEW_TITLES[view] || 'RASTRO');
   }
 
   function renderAll(){
@@ -3410,9 +3792,11 @@
     renderLive();
     renderMapaPeriodTabs();
     renderMapa();
+    renderCampSourcePills();
+    renderSourcePanels();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') loadIntegrations(); }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -3477,30 +3861,110 @@
 
 
 
-  // ---------- Integrações (chaves de API coladas no app) ----------
+  // ---------- Integrações (uma guia por ferramenta; várias contas por ferramenta quando faz sentido) ----------
   const INTEG_API = 'https://pareto-console-api.prof-leosantana.workers.dev/integrations';
-  let integData = [], integFlags = {};
+  const CONN_API = 'https://pareto-console-api.prof-leosantana.workers.dev/connections';
+  let integData = [], integFlags = {}, connData = { taboola: [] }, integOpen = null;
+  const INTEG_TOOLS = [
+    { key: 'newsbreak', name: 'NewsBreak', cat: 'Fonte de tráfego', kind: 'link' },
+    { key: 'taboola', name: 'Taboola', cat: 'Fonte de tráfego', kind: 'multi' },
+    { key: 'adskeeper', name: 'Adskeeper', cat: 'Fonte de tráfego', kind: 'soon' },
+    { key: 'revcontent', name: 'RevContent', cat: 'Fonte de tráfego', kind: 'soon' },
+    { key: 'outbrain', name: 'Outbrain', cat: 'Fonte de tráfego', kind: 'soon' },
+    { key: 'redtrack', name: 'RedTrack', cat: 'Vendas', kind: 'single', integKey: 'REDTRACK_API_KEY' },
+    { key: 'vturb', name: 'Vturb', cat: 'Vídeo', kind: 'single', integKey: 'VTURB_API_TOKEN' },
+  ];
   function integrationOn(k){ return !!integFlags[k]; }
   function integApi(path, method, body){
     return fetch(INTEG_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
       .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
   }
+  function connApi(path, method, body){
+    return fetch(CONN_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
   function loadIntegrationFlags(){
     return integApi().then(j => { integFlags = {}; (j.integrations || []).forEach(i => { integFlags[i.key] = !!i.source; }); integData = j.integrations || []; }).catch(() => {});
   }
-  function loadIntegrations(){ return loadIntegrationFlags().then(renderIntegrations); }
+  function loadConnections(){ return connApi().then(j => { connData = { taboola: j.taboola || [] }; }).catch(() => {}); }
+  function loadIntegrations(){ return Promise.all([loadIntegrationFlags(), loadConnections()]).then(renderIntegrations); }
+  function integStatus(t){
+    if (t.kind === 'link') return { txt: 'Contas em "Contas"', cls: 'act' };
+    if (t.kind === 'soon') return { txt: 'Em breve', cls: '' };
+    if (t.kind === 'multi') { const n = (connData[t.key] || []).length; return n ? { txt: n + (n === 1 ? ' conta conectada' : ' contas conectadas'), cls: 'act' } : { txt: 'Não configurada', cls: 'warn' }; }
+    const i = integData.find(x => x.key === t.integKey);
+    return i && i.source ? { txt: i.source === 'server' ? 'Conectada (servidor)' : 'Conectada', cls: 'act' } : { txt: 'Não configurada', cls: 'warn' };
+  }
+  function integResultText(j){
+    return j.ok ? 'Funcionando ✓' + (j.detail ? ' · ' + j.detail : '') + (j.accountFound === false ? ' · ⚠ Mas o Account ID informado não está entre as contas que essas chaves enxergam. Confira o Account ID.' : '') : (j.error === 'not_configured' || j.error === 'not_found' ? 'Sem chave configurada.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.');
+  }
   function renderIntegrations(){
     const el = document.getElementById('integList');
     if (!el) return;
-    el.innerHTML = integData.length ? integData.map(i => {
-      const st = i.source === 'app' ? '<span class="rule-chip act">Configurada neste app · ••••' + ccEsc(i.tail || '') + '</span>' : i.source === 'server' ? '<span class="rule-chip">Configurada no servidor (Cloudflare)</span>' : '<span class="rule-chip warn">Não configurada</span>';
-      return '<div class="integ-row"><div><div class="rule-name">' + ccEsc(i.label) + '</div><div class="rule-line">' + ccEsc(i.hint) + '</div><div class="rule-line">' + st + '</div></div>' +
-        '<div class="integ-actions"><input type="password" autocomplete="off" placeholder="' + (i.source ? 'Colar uma chave nova' : 'Cole a chave aqui') + '" data-integ-input="' + ccEsc(i.key) + '">' +
-        '<button type="button" class="rej-edit-btn" data-integ-save="' + ccEsc(i.key) + '">Salvar</button>' +
-        '<button type="button" data-integ-test="' + ccEsc(i.key) + '"' + (i.source ? '' : ' disabled') + '>Testar</button>' +
-        (i.source === 'app' ? '<button type="button" class="danger" data-integ-del="' + ccEsc(i.key) + '">Remover</button>' : '') +
-        '<span class="cell-muted integ-res" data-integ-res="' + ccEsc(i.key) + '"></span></div></div>';
-    }).join('') : '<div class="empty-state">Carregando…</div>';
+    const tool = INTEG_TOOLS.find(t => t.key === integOpen);
+    if (!tool) {
+      const cats = []; INTEG_TOOLS.forEach(t => { if (cats.indexOf(t.cat) === -1) cats.push(t.cat); });
+      el.innerHTML = '<div class="integ-intro">Clique numa ferramenta para ver as contas dela e adicionar novas.</div>' + cats.map(c =>
+        '<div class="integ-section">' + ccEsc(c) + '</div><div class="integ-grid">' + INTEG_TOOLS.filter(t => t.cat === c).map(t => {
+          const st = integStatus(t);
+          return '<button type="button" class="integ-card" data-integ-open="' + t.key + '"><span class="integ-card-name">' + ccEsc(t.name) + '</span><span class="rule-chip ' + st.cls + '">' + ccEsc(st.txt) + '</span></button>';
+        }).join('') + '</div>').join('');
+      el.querySelectorAll('[data-integ-open]').forEach(b => b.addEventListener('click', () => { integOpen = b.dataset.integOpen; renderIntegrations(); }));
+      return;
+    }
+    const head = '<div class="integ-detail-head"><button type="button" class="integ-back" data-integ-back>← Integrações</button><span class="integ-detail-title">' + ccEsc(tool.name) + '</span></div>';
+    const st = integStatus(tool);
+    let body = '';
+    if (tool.kind === 'link') {
+      body = '<div class="integ-note">Os tokens da NewsBreak ficam por conta (cada conta tem o seu), na tela <b>Contas</b>. Lá você vê as que já existem e adiciona novas.</div><div class="integ-pad"><button type="button" class="rej-edit-btn" data-integ-goto="contas">Abrir Contas</button></div>';
+    } else if (tool.kind === 'soon') {
+      body = '<div class="integ-note">Em breve. Quando a integração com ' + ccEsc(tool.name) + ' for construída, você adiciona as contas aqui, uma por uma.</div>';
+    } else if (tool.kind === 'multi') {
+      const list = connData[tool.key] || [], state = (taboolaState.connections || []);
+      body = '<div class="integ-subhead">Contas conectadas</div>' + (list.length ? list.map(c => {
+        const sc = state.find(x => x.id === c.id);
+        const found = sc && sc.ok && sc.accounts.length ? '<div class="rule-line integ-justify">' + sc.accounts.length + ' conta(s) de anúncio: ' + ccEsc(sc.accounts.slice(0, 12).map(a => a.name).join(' · ')) + (sc.accounts.length > 12 ? ' · …' : '') + '</div>' : (sc && !sc.ok ? '<div class="rule-line"><span class="rule-chip warn">O Taboola não aceitou' + (sc.status ? ' (status ' + sc.status + ')' : '') + '</span></div>' : '');
+        return '<div class="integ-row integ-conn"><div><div class="rule-name">' + ccEsc(c.name) + '</div><div class="rule-line">Account ID: ' + ccEsc(c.accountId || '—') + ' · Client ID ••••' + ccEsc(c.clientIdTail) + '</div>' + found + '<span class="cell-muted integ-res" data-conn-res="' + ccEsc(c.id) + '"></span></div>' +
+          '<div class="integ-actions"><button type="button" data-conn-test="' + ccEsc(c.id) + '">Testar</button><button type="button" class="danger" data-conn-del="' + ccEsc(c.id) + '" data-conn-name="' + ccEsc(c.name) + '">Remover</button></div></div>';
+      }).join('') : '<div class="integ-note">Nenhuma conta conectada ainda.</div>') +
+      '<div class="integ-subhead">Adicionar conta</div><div class="integ-note">Os três dados (Client ID, Client Secret e Account ID) vêm do seu gerente de conta do Taboola (Backstage API). O nome é só pra você reconhecer.</div>' +
+      '<div class="integ-form"><input type="text" id="connName" placeholder="Nome (ex.: Taboola principal)" maxlength="60" autocomplete="off"><input type="text" id="connId" placeholder="Client ID" autocomplete="off"><input type="password" id="connSecret" placeholder="Client Secret" autocomplete="off"><input type="text" id="connAcc" placeholder="Account ID (ex.: minhaconta-network)" autocomplete="off"><button type="button" class="rej-edit-btn" id="connAdd">Salvar e testar</button><span class="cell-muted integ-res" id="connAddRes"></span></div>';
+    } else {
+      const i = integData.find(x => x.key === tool.integKey) || {};
+      const chip = i.source === 'app' ? '<span class="rule-chip act">Configurada neste app · ••••' + ccEsc(i.tail || '') + '</span>' : i.source === 'server' ? '<span class="rule-chip">Configurada no servidor (Cloudflare)</span>' : '<span class="rule-chip warn">Não configurada</span>';
+      body = '<div class="integ-subhead">Conta conectada</div><div class="integ-row"><div><div class="rule-name">' + ccEsc(tool.name) + '</div><div class="rule-line">' + ccEsc(i.hint || '') + '</div><div class="rule-line">' + chip + '</div></div>' +
+        '<div class="integ-actions"><input type="password" autocomplete="off" placeholder="' + (i.source ? 'Colar uma chave nova' : 'Cole a chave aqui') + '" data-integ-input="' + ccEsc(tool.integKey) + '">' +
+        '<button type="button" class="rej-edit-btn" data-integ-save="' + ccEsc(tool.integKey) + '">Salvar</button>' +
+        '<button type="button" data-integ-test="' + ccEsc(tool.integKey) + '"' + (i.source ? '' : ' disabled') + '>Testar</button>' +
+        (i.source === 'app' ? '<button type="button" class="danger" data-integ-del="' + ccEsc(tool.integKey) + '">Remover</button>' : '') +
+        '<span class="cell-muted integ-res" data-integ-res="' + ccEsc(tool.integKey) + '"></span></div></div>' +
+        '<div class="integ-note">Por enquanto o app usa uma conta de ' + ccEsc(tool.name) + '. Várias contas entram quando o painel precisar somar mais de uma.</div>';
+    }
+    el.innerHTML = head + '<div class="integ-status">' + '<span class="rule-chip ' + st.cls + '">' + ccEsc(st.txt) + '</span></div>' + body;
+    el.querySelector('[data-integ-back]').addEventListener('click', () => { integOpen = null; renderIntegrations(); });
+    const go = el.querySelector('[data-integ-goto]');
+    if (go) go.addEventListener('click', () => { view = go.dataset.integGoto; savePref('view', view); renderAll(); });
+    // ---- Taboola (várias contas) ----
+    const cres = (id, t) => { const o = el.querySelector('[data-conn-res="' + id + '"]'); if (o) o.textContent = t; };
+    el.querySelectorAll('[data-conn-test]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.connTest; cres(id, 'Testando…');
+      connApi('/test', 'POST', { tool: 'taboola', id }).then(j => { cres(id, integResultText(j)); loadTaboolaState(); }).catch(() => cres(id, 'Sem conexão com o servidor.'));
+    }));
+    el.querySelectorAll('[data-conn-del]').forEach(b => b.addEventListener('click', () => {
+      if (confirm('Remover a conta "' + b.dataset.connName + '" do Taboola deste app? As chaves dela serão apagadas aqui.')) connApi('/' + encodeURIComponent(b.dataset.connDel), 'DELETE').then(() => loadConnections()).then(() => loadTaboolaState()).then(renderIntegrations);
+    }));
+    const add = el.querySelector('#connAdd');
+    if (add) add.addEventListener('click', () => {
+      const out = el.querySelector('#connAddRes'), name = el.querySelector('#connName').value.trim(), cid = el.querySelector('#connId').value.trim(), sec = el.querySelector('#connSecret').value.trim(), acc = el.querySelector('#connAcc').value.trim();
+      if (!name || !cid || !sec || !acc) { out.textContent = 'Preencha o nome, o Client ID, o Client Secret e o Account ID.'; return; }
+      out.textContent = 'Salvando…'; add.disabled = true;
+      connApi('', 'POST', { tool: 'taboola', name, clientId: cid, clientSecret: sec, accountId: acc }).then(r => {
+        out.textContent = 'Salva. Testando…';
+        return connApi('/test', 'POST', { tool: 'taboola', id: r.connection.id }).then(j => ({ j, id: r.connection.id }));
+      }).then(({ j }) => loadConnections().then(() => loadTaboolaState()).then(() => { renderIntegrations(); const o = document.getElementById('connAddRes'); if (o) o.textContent = 'Conta adicionada. ' + integResultText(j); }))
+        .catch(e => { add.disabled = false; out.textContent = e.message === 'value_invalid' ? 'Client ID, Secret ou Account ID inválido (tamanho ou espaços).' : e.message === 'too_many' ? 'Limite de contas atingido.' : friendlyError(e.message); });
+    });
+    // ---- ferramentas de chave única ----
     const res = (k, t) => { const o = el.querySelector('[data-integ-res="' + k + '"]'); if (o) o.textContent = t; };
     el.querySelectorAll('[data-integ-save]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integSave, input = el.querySelector('[data-integ-input="' + k + '"]'), v = input.value.trim();
@@ -3511,8 +3975,7 @@
     }));
     el.querySelectorAll('[data-integ-test]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integTest; res(k, 'Testando…');
-      integApi('/test', 'POST', { key: k }).then(j => res(k, j.ok ? 'Funcionando ✓' : (j.error === 'not_configured' ? 'Sem chave configurada.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.')))
-        .catch(() => res(k, 'Sem conexão com o servidor.'));
+      integApi('/test', 'POST', { key: k }).then(j => res(k, integResultText(j))).catch(() => res(k, 'Sem conexão com o servidor.'));
     }));
     el.querySelectorAll('[data-integ-del]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integDel;
@@ -4156,6 +4619,7 @@
 
   renderAll();
   renderRejeicoes();
+  loadTaboolaState();
   if (view === 'rejeicoes') loadRejeicoes();
   if (view === 'regras') loadRegras();
   if (view === 'notificacoes') loadNotifs();
@@ -4276,7 +4740,8 @@
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
   function inFolder(cat, folder){ return !!folder && (cat === folder || cat.indexOf(folder + '/') === 0); }
-  function topNiches(){ return niches.filter(n => n.indexOf('/') === -1); }
+  // TABOOLA is a top folder of the gallery (one tree per traffic source), not a niche of the NewsBreak flows
+  function topNiches(){ return niches.filter(n => n.indexOf('/') === -1 && n !== 'TABOOLA'); }
   function folderLabel(code){
     if (code === 'logo') return 'Logos';
     if (code === 'CREATIVE') return 'Sem pasta (antigo)';
