@@ -77,6 +77,7 @@
 
   .content{flex:1; min-width:0; max-width:1160px; margin:0 auto; padding:28px 24px 60px;}
   .content.wide{max-width:1320px;}
+  .content.full{max-width:none;}
 
   header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
   header h1{font-size:22px; font-weight:700; margin:0 0 4px; letter-spacing:-.01em;}
@@ -352,7 +353,18 @@
   .camp-table-bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:4px 0 12px;}
   .camp-table-bar .tabs{margin:0;}
   .camp-table-bar select.camp-search{width:auto; max-width:240px;}
-  .ctable{min-width:1180px;}
+  .ctable{table-layout:fixed; width:100%; border-collapse:collapse;}
+  .ctable th, .ctable td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ctable thead th{position:relative;}
+  .ctable thead th[draggable=true]{cursor:grab;}
+  .ctable thead th.drag-over{box-shadow:inset 3px 0 0 var(--accent);}
+  .ctable thead th.dragging{opacity:.4;}
+  .ctable thead th.spacer, .ctable tbody td.spacer, .ctable tfoot td.spacer{padding:0; border:none;}
+  .col-rs{position:absolute; top:0; right:0; width:7px; height:100%; cursor:col-resize; z-index:2;}
+  .col-rs:hover, .col-rs.on{background:color-mix(in srgb, var(--accent) 45%, transparent);}
+  body.col-resizing{cursor:col-resize; user-select:none;}
+  .ctable-name-link{background:none; border:none; padding:0; font:inherit; font-weight:600; color:var(--ink); cursor:pointer; text-align:left; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
+  .ctable-name-link:hover{color:var(--accent); text-decoration:underline;}
   .ctable th, .ctable td{padding:8px 10px;}
   .ctable thead th{cursor:pointer; user-select:none;}
   .ctable thead th.l, .ctable tbody td.l, .ctable tfoot td.l{text-align:left;}
@@ -362,8 +374,9 @@
   .ctable tbody tr.is-off td{background:color-mix(in srgb, var(--bad) 6%, transparent);}
   .ctable tfoot td{font-weight:700; border-top:1px solid var(--line); padding-top:10px;}
   .ctable-ident{display:flex; align-items:center; gap:10px;}
-  .ctable-name{font-weight:600; font-size:13px; white-space:normal; max-width:260px;}
-  .ctable-sub{font-size:11px; color:var(--muted); font-weight:400; white-space:normal; max-width:260px;}
+  .ctable-ident > div{min-width:0;}
+  .ctable-name{font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ctable-sub{font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ctable-thumb{width:44px; height:58px; object-fit:cover; border-radius:6px; background:var(--neutral-bg); display:block; flex:none;}
   .budget-actions{display:inline-flex; align-items:center; gap:6px; margin-left:6px;}
   .budget-actions[hidden]{display:none;}
@@ -2398,6 +2411,7 @@
     document.getElementById('integracoesView').hidden = view !== 'integracoes';
     document.getElementById('contasView').hidden = view !== 'contas';
     document.getElementById('mainContent').classList.toggle('wide', view === 'criar' || view === 'galeria');
+    document.getElementById('mainContent').classList.toggle('full', view === 'campanhas');
   }
 
   function vturbBreakdown(list){
@@ -2851,6 +2865,24 @@
   const CT_DEFAULT_COLS = ['budget', 'cost', 'fat', 'ic', 'custoIc', 'venda', 'cpa', 'click', 'cpc', 'ctr', 'cpm'];
   let ctCols = (() => { try { const a = JSON.parse(loadPref('ctCols', 'null')); const ok = Array.isArray(a) ? a.filter(k => CT_CATALOG[k]) : []; return ok.length ? ok : CT_DEFAULT_COLS.slice(); } catch { return CT_DEFAULT_COLS.slice(); } })();
   function saveCtCols(){ savePref('ctCols', JSON.stringify(ctCols)); }
+  // column layout: one ordered list holding every draggable column (context/account/status + metrics)
+  const CT_FIXED = { ctx: 'Campanha', conta: 'Conta', status: 'Status' };
+  const CT_DEF_W = { name: 340, ctx: 220, conta: 90, status: 160, budget: 130, cost: 100, fat: 150, ic: 120, custoIc: 110, venda: 160, cpa: 90, click: 80, cpc: 80, ctr: 80, cpm: 90, impr: 110, roas: 80 };
+  let ctOrder = (() => { try { const a = JSON.parse(loadPref('ctOrder', 'null')); return Array.isArray(a) ? a : []; } catch { return []; } })();
+  let ctWidths = (() => { try { const o = JSON.parse(loadPref('ctWidths', 'null')); return o && typeof o === 'object' ? o : {}; } catch { return {}; } })();
+  function ctW(k){ return Math.max(50, Math.round(ctWidths[k] || CT_DEF_W[k] || 100)); }
+  // the full order (also keeps columns that are hidden in the current tab, so they keep their place)
+  function ctFullOrder(){
+    const base = ['ctx', 'conta', 'status'].concat(ctCols);
+    const out = ctOrder.filter(k => base.indexOf(k) !== -1);
+    base.forEach(k => { if (out.indexOf(k) === -1) out.push(k); });
+    return out;
+  }
+  function ctVisibleOrder(){ return ctFullOrder().filter(k => !(k === 'ctx' && campTab === 'campaigns') && !(k === 'budget' && campTab === 'ads')); }
+  function ctSaveOrder(full){
+    ctOrder = full; savePref('ctOrder', JSON.stringify(full));
+    ctCols = full.filter(k => CT_CATALOG[k]); saveCtCols();
+  }
 
   function ctNicheOf(name){
     const n = String(name || '').split(' - ')[0].trim().toUpperCase();
@@ -2951,16 +2983,16 @@
       ctCols.map((k, i) => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '" checked> ' + CT_CATALOG[k].label + '</label>' +
         '<span><button type="button" data-col-up="' + k + '"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-col-down="' + k + '"' + (i === ctCols.length - 1 ? ' disabled' : '') + '>↓</button></span></div>').join('') +
       (rest.length ? '<div class="ct-cols-title">Disponíveis</div>' + rest.map(k => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '"> ' + CT_CATALOG[k].label + '</label></div>').join('') : '') +
-      '<button type="button" class="bell-pop-link" id="ctColsReset">Restaurar o padrão (LS)</button>';
+      '<button type="button" class="bell-pop-link" id="ctColsReset">Restaurar colunas e larguras (padrão LS)</button>';
     panel.querySelectorAll('[data-col-toggle]').forEach(c => c.addEventListener('change', () => {
       const k = c.dataset.colToggle;
       if (c.checked) { if (ctCols.indexOf(k) === -1) ctCols.push(k); } else if (ctCols.length > 1) ctCols = ctCols.filter(x => x !== k);
       saveCtCols(); renderCtColsPanel(); renderCampanhas();
     }));
-    const move = (k, d) => { const i = ctCols.indexOf(k), j = i + d; if (j < 0 || j >= ctCols.length) return; [ctCols[i], ctCols[j]] = [ctCols[j], ctCols[i]]; saveCtCols(); renderCtColsPanel(); renderCampanhas(); };
+    const move = (k, d) => { const i = ctCols.indexOf(k), j = i + d; if (j < 0 || j >= ctCols.length) return; const full = ctFullOrder(), a = full.indexOf(ctCols[i]), b = full.indexOf(ctCols[j]); [full[a], full[b]] = [full[b], full[a]]; ctSaveOrder(full); renderCtColsPanel(); renderCampanhas(); };
     panel.querySelectorAll('[data-col-up]').forEach(b => b.addEventListener('click', () => move(b.dataset.colUp, -1)));
     panel.querySelectorAll('[data-col-down]').forEach(b => b.addEventListener('click', () => move(b.dataset.colDown, 1)));
-    document.getElementById('ctColsReset').addEventListener('click', () => { ctCols = CT_DEFAULT_COLS.slice(); saveCtCols(); renderCtColsPanel(); renderCampanhas(); });
+    document.getElementById('ctColsReset').addEventListener('click', () => { ctCols = CT_DEFAULT_COLS.slice(); saveCtCols(); ctOrder = []; ctWidths = {}; savePref('ctOrder', '[]'); savePref('ctWidths', '{}'); renderCtColsPanel(); renderCampanhas(); });
   }
 
   function renderCampTable(){
@@ -2997,14 +3029,16 @@
     const bar = '<div class="ct-tabbar"><div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + scopedAll[t.key].length + '</span></button>').join('') + '</div>' +
       chip('campaigns', 'campanha') + chip('adsets', 'conjunto') + '</div>';
 
-    const th = (key, label, cls) => '<th class="' + cls + '" data-ct-sort="' + key + '">' + label + (campSort.key === key ? (dir < 0 ? ' ↓' : ' ↑') : '') + '</th>';
+    const vis = ctVisibleOrder();
+    const labelOf = (k) => k === 'ctx' ? (campTab === 'ads' ? 'Conjunto · Campanha' : 'Campanha') : k === 'conta' ? 'Conta' : k === 'status' ? 'Status' : (k === 'budget' && campTab === 'campaigns' ? 'Orç. ativo/dia' : CT_CATALOG[k].label);
+    const thx = (key, label, cls, movable) => '<th class="' + cls + '" data-ct-sort="' + key + '" data-ct-col="' + key + '"' + (movable ? ' draggable="true"' : '') + '>' + label + (campSort.key === key ? (dir < 0 ? ' ↓' : ' ↑') : '') + '<span class="col-rs" data-rs="' + key + '"></span></th>';
     const nameLabel = { campaigns: 'Campanha', adsets: 'Conjunto', ads: 'Anúncio' }[campTab];
-    const cols = ctCols.filter(k => !(k === 'budget' && campTab === 'ads'));
+    const cols = vis.filter(k => CT_CATALOG[k]);
     const allChecked = shown.length && shown.every(r => ctSel[campTab].has(r.id));
-    const head = '<tr><th class="c"><input type="checkbox" id="ctCheckAll"' + (allChecked ? ' checked' : '') + ' title="Marcar todos"></th><th class="c">Liga</th>' + th('name', nameLabel, 'l') +
-      (campTab !== 'campaigns' ? '<th class="l">' + (campTab === 'ads' ? 'Conjunto · Campanha' : 'Campanha') + '</th>' : '') +
-      '<th class="l">Conta</th>' + th('status', 'Status', 'l') +
-      cols.map(k => th(k, k === 'budget' && campTab === 'campaigns' ? 'Orç. ativo/dia' : CT_CATALOG[k].label, 'r')).join('') + '</tr>';
+    const colgroup = '<colgroup><col style="width:36px"><col style="width:56px"><col style="width:' + ctW('name') + 'px">' + vis.map(k => '<col data-col="' + k + '" style="width:' + ctW(k) + 'px">').join('') + '<col></colgroup>';
+    const tableW = 36 + 56 + ctW('name') + vis.reduce((a, k) => a + ctW(k), 0) + 40;
+    const head = '<tr><th class="c"><input type="checkbox" id="ctCheckAll"' + (allChecked ? ' checked' : '') + ' title="Marcar todos"></th><th class="c">Liga</th>' + thx('name', nameLabel, 'l', false) +
+      vis.map(k => thx(k, labelOf(k), CT_CATALOG[k] ? 'r' : 'l', true)).join('') + '<th class="spacer"></th></tr>';
 
     const body = shown.map(r => {
       const thumb = campTab === 'ads' && r.thumb
@@ -3019,28 +3053,38 @@
       return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
         '<td class="c"><input type="checkbox" data-ct-check="' + r.id + '"' + (ctSel[campTab].has(r.id) ? ' checked' : '') + '></td>' +
         '<td class="c"><label class="toggle-switch small"><input type="checkbox" data-t-status="' + r.id + '" data-t-type="' + r.type + '" data-account-key="' + r.accountKey + '"' + (r.on ? ' checked' : '') + '><span class="toggle-track"></span></label></td>' +
-        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + ccEsc(r.name) + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
-        (campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>' : '') +
-        (campTab === 'adsets' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>' : '') +
-        '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.sub) + '</div></td>' +
-        '<td class="l"><span class="roas-pill ' + badge[1] + '">' + badge[0] + '</span>' + (r.reason && sk !== 'review' ? '<div class="ctable-sub">' + ccEsc(r.reason) + '</div>' : '') + '</td>' +
-        cols.map(k => k === 'budget' ? budgetCell : ctCell(r, k)).join('') +
+        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + (campTab === 'ads' ? ccEsc(r.name) : '<button type="button" class="ctable-name-link" data-ct-open="' + r.id + '" title="' + (campTab === 'campaigns' ? 'Ver os conjuntos desta campanha' : 'Ver os anúncios deste conjunto') + '">' + ccEsc(r.name) + '</button>') + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
+        vis.map(k => {
+          if (k === 'ctx') return campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>'
+            : '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>';
+          if (k === 'conta') return '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.sub) + '</div></td>';
+          if (k === 'status') return '<td class="l"><span class="roas-pill ' + badge[1] + '">' + badge[0] + '</span>' + (r.reason && sk !== 'review' ? '<div class="ctable-sub">' + ccEsc(r.reason) + '</div>' : '') + '</td>';
+          return k === 'budget' ? budgetCell : ctCell(r, k);
+        }).join('') + '<td class="spacer"></td>' +
       '</tr>';
     }).join('');
 
     const tot = campTotals(shown);
-    const fixedCols = 2 + 1 + (campTab !== 'campaigns' ? 1 : 0) + 1 + 1;
-    const foot = '<tr><td class="l" colspan="' + fixedCols + '">Total (' + shown.length + ')</td>' + cols.map(k => k === 'budget' ? '<td></td>' : ctCell(tot, k)).join('') + '</tr>';
+    const fixedCols = 3;
+    const foot = '<tr><td class="l" colspan="' + fixedCols + '">Total (' + shown.length + ')</td>' + vis.map(k => !CT_CATALOG[k] ? '<td></td>' : k === 'budget' ? '<td></td>' : ctCell(tot, k)).join('') + '<td class="spacer"></td></tr>';
     const loading = ctPeriod !== 'TODAY' && !(ctMetrics[ctPeriod] && ctMetrics[ctPeriod].data);
 
-    wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable"><thead>' + head + '</thead><tbody>' +
-      (body || '<tr><td class="l" colspan="' + (fixedCols + cols.length) + '"><div class="empty-state">' + (loading ? 'Carregando…' : 'Nada encontrado com esses filtros.') + '</div></td></tr>') +
+    wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable" style="min-width:' + tableW + 'px">' + colgroup + '<thead>' + head + '</thead><tbody>' +
+      (body || '<tr><td class="l" colspan="' + (fixedCols + vis.length + 1) + '"><div class="empty-state">' + (loading ? 'Carregando…' : 'Nada encontrado com esses filtros.') + '</div></td></tr>') +
       '</tbody><tfoot>' + foot + '</tfoot></table></div>' +
       '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas d' + (ctPeriod === 'TODAY' ? 'e hoje' : 'o período: ' + CT_PERIOD_LABEL[ctPeriod]) + ' (fuso de Brasília), do relatório da NewsBreak — vendas aqui podem diferir do RedTrack. A NewsBreak atualiza a cada ~5 min e as <b>últimas 3 horas ainda não estão finalizadas</b>. “Inativo” = não está entregando.</p>';
 
     wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
     wrap.querySelectorAll('[data-ct-clear]').forEach(b => b.addEventListener('click', () => { ctSel[b.dataset.ctClear] = new Set(); renderCampanhas(); }));
+    wrap.querySelectorAll('[data-ct-open]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.ctOpen;
+      if (campTab === 'campaigns') { ctSel.campaigns = new Set([id]); ctSel.adsets = new Set(); campTab = 'adsets'; }
+      else { ctSel.adsets = new Set([id]); campTab = 'ads'; }
+      savePref('campTab', campTab); renderCampanhas();
+    }));
+    ctBindColumns(wrap);
     wrap.querySelectorAll('[data-ct-sort]').forEach(h => h.addEventListener('click', () => {
+      if (Date.now() - ctLastDrag < 300) return;
       const k = h.dataset.ctSort;
       campSort = campSort.key === k ? { key: k, dir: -campSort.dir } : { key: k, dir: k === 'name' ? 1 : -1 };
       renderCampanhas();
@@ -3062,6 +3106,42 @@
     bulk.hidden = !n;
     const fem = campTab === 'campaigns';
     document.getElementById('ctBulkCount').textContent = n + ' ' + { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab] + (n === 1 ? '' : 's') + ' selecionad' + (fem ? 'a' : 'o') + (n === 1 ? '' : 's');
+  }
+
+  // --- drag to reorder / drag the edge to resize ---
+  let ctLastDrag = 0;
+  function ctBindColumns(wrap){
+    const table = wrap.querySelector('table.ctable'); if (!table) return;
+    let dragKey = null;
+    table.querySelectorAll('th[draggable=true]').forEach(th => {
+      th.addEventListener('dragstart', (e) => { dragKey = th.dataset.ctCol; th.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragKey); } catch {} });
+      th.addEventListener('dragend', () => { th.classList.remove('dragging'); table.querySelectorAll('th.drag-over').forEach(x => x.classList.remove('drag-over')); ctLastDrag = Date.now(); });
+      th.addEventListener('dragover', (e) => { if (!dragKey || dragKey === th.dataset.ctCol) return; e.preventDefault(); th.classList.add('drag-over'); });
+      th.addEventListener('dragleave', () => th.classList.remove('drag-over'));
+      th.addEventListener('drop', (e) => {
+        e.preventDefault(); th.classList.remove('drag-over');
+        const to = th.dataset.ctCol; if (!dragKey || dragKey === to) return;
+        const full = ctFullOrder(); full.splice(full.indexOf(dragKey), 1); full.splice(full.indexOf(to), 0, dragKey);
+        dragKey = null; ctSaveOrder(full); renderCtColsPanel(); renderCampanhas();
+      });
+    });
+    table.querySelectorAll('.col-rs').forEach(h => {
+      h.addEventListener('click', (e) => e.stopPropagation());
+      h.addEventListener('mousedown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const key = h.dataset.rs, th = h.parentElement; th.draggable = false;
+        const col = key === 'name' ? table.querySelector('colgroup col:nth-child(3)') : table.querySelector('col[data-col="' + key + '"]');
+        const startX = e.clientX, startW = ctW(key), startTable = parseFloat(table.style.minWidth) || table.offsetWidth;
+        h.classList.add('on'); document.body.classList.add('col-resizing');
+        const mv = (ev) => { const w = Math.max(50, Math.round(startW + ev.clientX - startX)); ctWidths[key] = w; col.style.width = w + 'px'; table.style.minWidth = (startTable + w - startW) + 'px'; };
+        const up = () => {
+          document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up);
+          h.classList.remove('on'); document.body.classList.remove('col-resizing'); th.draggable = !!CT_CATALOG[key] || !!CT_FIXED[key];
+          savePref('ctWidths', JSON.stringify(ctWidths)); ctLastDrag = Date.now();
+        };
+        document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+      });
+    });
   }
 
   // --- bulk actions ---
