@@ -2993,7 +2993,7 @@
 
     const TABS = [{ key: 'campaigns', label: 'Campanhas' }, { key: 'adsets', label: 'Conjuntos' }, { key: 'ads', label: 'Anúncios' }];
     const chip = (t, label) => ctSel[t].size && campTab !== t && ((t === 'campaigns' && campTab !== 'campaigns') || (t === 'adsets' && campTab === 'ads'))
-      ? '<span class="ct-chip">' + ctSel[t].size + ' ' + label + ' selecionada' + (ctSel[t].size > 1 ? 's' : '') + ' <button type="button" data-ct-clear="' + t + '" title="Tirar o filtro">✕</button></span>' : '';
+      ? '<span class="ct-chip">' + ctSel[t].size + ' ' + label + (ctSel[t].size > 1 ? 's' : '') + ' selecionad' + (t === 'campaigns' ? 'a' : 'o') + (ctSel[t].size > 1 ? 's' : '') + ' <button type="button" data-ct-clear="' + t + '" title="Tirar o filtro">✕</button></span>' : '';
     const bar = '<div class="ct-tabbar"><div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + scopedAll[t.key].length + '</span></button>').join('') + '</div>' +
       chip('campaigns', 'campanha') + chip('adsets', 'conjunto') + '</div>';
 
@@ -3060,7 +3060,8 @@
     const n = ctSel[campTab].size;
     const bulk = document.getElementById('ctBulk');
     bulk.hidden = !n;
-    document.getElementById('ctBulkCount').textContent = n + ' ' + { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab] + (n === 1 ? '' : 's') + (n === 1 ? ' selecionado' : ' selecionados');
+    const fem = campTab === 'campaigns';
+    document.getElementById('ctBulkCount').textContent = n + ' ' + { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab] + (n === 1 ? '' : 's') + ' selecionad' + (fem ? 'a' : 'o') + (n === 1 ? '' : 's');
   }
 
   // --- bulk actions ---
