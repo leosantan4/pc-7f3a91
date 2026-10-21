@@ -475,6 +475,10 @@
   .col-rs:hover, .col-rs.on{background:color-mix(in srgb, var(--accent) 45%, transparent);}
   body.col-resizing{cursor:col-resize; user-select:none;}
   .ctable-name-link{background:none; border:none; padding:0; font:inherit; font-weight:600; color:var(--ink); cursor:pointer; text-align:left; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
+  .ct-ad-line{display:inline-flex; align-items:center; gap:8px; max-width:100%;}
+  .ct-pencil{border:1px solid var(--line); background:var(--surface-raised); color:var(--muted); border-radius:8px; width:28px; height:28px; display:inline-grid; place-items:center; cursor:pointer; flex:none; padding:0;}
+  .ct-pencil svg{width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
+  .ct-pencil:hover{color:var(--accent); border-color:var(--accent);}
   .ctable-name-link:hover{color:var(--accent); text-decoration:underline;}
   .ctable th, .ctable td{padding:8px 10px;}
   .ctable thead th{cursor:pointer; user-select:none;}
@@ -874,12 +878,12 @@
         <label>Avisar quando o saldo ficar abaixo de (USD) <input type="number" id="balRuleThr" min="0" step="1" placeholder="300"></label>
       </div>
       <div class="rule-block">
-        <div class="rej-pick-head">Contas <span class="cell-muted">(nenhuma marcada = todas)</span></div>
-        <div class="ms-panel" id="balRuleAccs" style="position:static; max-height:180px; box-shadow:none;"></div>
+        <div class="rej-pick-head">Contas</div>
+        <div class="ms2" id="balRuleAccBox"><button type="button" class="ms2-btn"></button><div class="ms2-panel" hidden></div></div>
       </div>
       <div class="rule-block">
-        <div class="rej-pick-head">Dias da semana <span class="cell-muted">(nenhum marcado = todos os dias)</span></div>
-        <div class="pill-row" id="balRuleDays"></div>
+        <div class="rej-pick-head">Dias da semana</div>
+        <div class="ms2" id="balRuleDayBox"><button type="button" class="ms2-btn"></button><div class="ms2-panel" hidden></div></div>
       </div>
       <div class="rej-summary" id="balRuleMsg"></div>
       <button type="button" class="assign-sheet-close" id="balRuleSave">Salvar</button>
@@ -1251,6 +1255,15 @@
   .switch-track::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .15s;}
   .switch input:checked + .switch-track{background:var(--accent);}
   .switch input:checked + .switch-track::after{transform:translateX(16px);}
+  .ms2{position:relative;}
+  .ms2-btn{width:100%; text-align:left; padding:10px 12px; font:inherit; font-size:14px; font-weight:500; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ms2-btn::after{content:'▾'; float:right; color:var(--muted);}
+  .ms2-panel{position:fixed; z-index:95; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:6px; overflow-y:auto; overscroll-behavior:contain;}
+  .ms2-panel[hidden]{display:none;}
+  .ms2-panel label{display:flex; align-items:center; gap:8px; padding:8px 8px; border-radius:7px; font-size:13.5px; font-weight:500; color:var(--ink); cursor:pointer; text-transform:none; letter-spacing:0; white-space:nowrap;}
+  .ms2-panel label:hover{background:var(--neutral-bg);}
+  .ms2-panel label.all{font-weight:700; border-bottom:1px solid var(--line); border-radius:7px 7px 0 0; margin-bottom:2px;}
+  .ms2-panel input{width:auto; padding:0; margin:0; flex:none; accent-color:var(--accent);}
   .ms-wrap{position:relative;}
   .ms-btn{width:100%; text-align:left; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:14px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ms-panel{position:absolute; left:0; top:calc(100% + 6px); z-index:40; min-width:100%; max-width:min(460px, 90vw); max-height:320px; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:8px 10px;}
@@ -1406,10 +1419,19 @@
   .ct-toolbar select.camp-search{width:auto; max-width:200px;}
   .ct-search{flex:1 1 220px; min-width:160px;}
   .ct-cols-wrap{position:relative;}
-  .ct-cols-panel{position:absolute; right:0; top:calc(100% + 6px); z-index:30; width:min(300px, 90vw); max-height:60vh; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:10px 12px;}
+  .ct-cols-panel{position:fixed; z-index:60; width:min(300px, 90vw); max-height:60vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:10px 12px;}
   .ct-cols-panel[hidden]{display:none;}
   .ct-cols-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin:6px 0;}
   .ct-col-row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:13px;}
+  .ct-presets{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
+  .ct-preset{display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:var(--bg);}
+  .ct-preset button{border:none; background:none; color:var(--ink); font:inherit; font-size:12.5px; font-weight:600; padding:4px 10px; cursor:pointer;}
+  .ct-preset button.x{padding:4px 8px 4px 2px; color:var(--muted);}
+  .ct-preset button.x:hover{color:var(--bad);}
+  .ct-preset button:first-child:hover{color:var(--accent);}
+  .ct-preset-save{border:1px dashed var(--line); background:none; color:var(--accent); font:inherit; font-size:12.5px; font-weight:700; padding:4px 10px; border-radius:999px; cursor:pointer;}
+  .ct-grip{cursor:grab; color:var(--muted); font-size:14px; letter-spacing:-2px; padding:2px 8px 2px 0; touch-action:none; user-select:none;}
+  .ct-col-row.dragging{background:color-mix(in srgb, var(--accent) 12%, transparent); border-radius:8px;}
   .ct-col-row label{display:flex; gap:7px; align-items:center; cursor:pointer;}
   .ct-col-row input{accent-color:var(--accent);}
   .ct-col-row button{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); border-radius:6px; padding:1px 7px; cursor:pointer; font-size:12px;}
@@ -1775,9 +1797,9 @@
         <form class="cost-form-grid" id="topupForm">
           <div>
             <label>Contas</label>
-            <div class="ms-wrap" id="topupMs">
-              <button type="button" class="ms-btn" id="topupAccBtn">Escolher contas</button>
-              <div class="ms-panel" id="topupAccPanel" hidden></div>
+            <div class="ms2" id="topupMs">
+              <button type="button" class="ms2-btn" id="topupAccBtn">Escolher contas</button>
+              <div class="ms2-panel" id="topupAccPanel" hidden></div>
             </div>
           </div>
           <div>
@@ -3446,27 +3468,34 @@
     roas: { label: 'ROAS', fmt: v => v.toFixed(2) + 'x' },
   };
   // default = the user's NewsBreak "LS" preset
-  const CT_DEFAULT_COLS = ['budget', 'cost', 'fat', 'ic', 'custoIc', 'venda', 'cpa', 'click', 'cpc', 'ctr', 'cpm'];
-  let ctCols = (() => { try { const a = JSON.parse(loadPref('ctCols', 'null')); const ok = Array.isArray(a) ? a.filter(k => CT_CATALOG[k]) : []; return ok.length ? ok : CT_DEFAULT_COLS.slice(); } catch { return CT_DEFAULT_COLS.slice(); } })();
-  function saveCtCols(){ savePref('ctCols', JSON.stringify(ctCols)); }
-  // column layout: one ordered list holding every draggable column (context/account/status + metrics)
-  const CT_FIXED = { ctx: 'Campanha', conta: 'Conta', status: 'Status' };
-  const CT_DEF_W = { name: 340, ctx: 220, conta: 90, status: 160, budget: 130, cost: 100, fat: 150, ic: 120, custoIc: 110, venda: 160, cpa: 90, click: 80, cpc: 80, ctr: 80, cpm: 90, impr: 110, roas: 80 };
-  let ctOrder = (() => { try { const a = JSON.parse(loadPref('ctOrder', 'null')); return Array.isArray(a) ? a : []; } catch { return []; } })();
+  // columns: conjunto · campanha · conta is ONE column ("origin"), status is a column too; both can be shown/hidden like any metric
+  const CT_NONMETRIC = { origin: 1, status: 1 };
+  const CT_DEFAULT_COLS = ['origin', 'status', 'budget', 'cost', 'fat', 'ic', 'custoIc', 'venda', 'cpa', 'click', 'cpc', 'ctr', 'cpm'];
+  const ctValid = (k) => !!CT_CATALOG[k] || !!CT_NONMETRIC[k];
+  let ctCols = (() => {
+    try {
+      const v2 = JSON.parse(loadPref('ctCols2', 'null'));
+      if (Array.isArray(v2)) { const ok = v2.filter(ctValid); if (ok.length) return ok; }
+      // saved before: a metrics list + a full order that held conjunto/campanha, conta and status
+      const old = JSON.parse(loadPref('ctCols', 'null')), ord = JSON.parse(loadPref('ctOrder', 'null'));
+      const base = Array.isArray(ord) && ord.length ? ord : ['ctx', 'conta', 'status'].concat(Array.isArray(old) ? old : CT_DEFAULT_COLS.slice(2));
+      const out = []; base.forEach(k => { const m = (k === 'ctx' || k === 'conta') ? 'origin' : k; if (ctValid(m) && out.indexOf(m) === -1) out.push(m); });
+      return out.length ? out : CT_DEFAULT_COLS.slice();
+    } catch { return CT_DEFAULT_COLS.slice(); }
+  })();
+  function saveCtCols(){ savePref('ctCols2', JSON.stringify(ctCols)); }
+  const CT_DEF_W = { name: 340, origin: 300, status: 160, budget: 130, cost: 100, fat: 150, ic: 120, custoIc: 110, venda: 160, cpa: 90, click: 80, cpc: 80, ctr: 80, cpm: 90, impr: 110, roas: 80 };
   let ctWidths = (() => { try { const o = JSON.parse(loadPref('ctWidths', 'null')); return o && typeof o === 'object' ? o : {}; } catch { return {}; } })();
   function ctW(k){ return Math.max(50, Math.round(ctWidths[k] || CT_DEF_W[k] || 100)); }
-  // the full order (also keeps columns that are hidden in the current tab, so they keep their place)
-  function ctFullOrder(){
-    const base = ['ctx', 'conta', 'status'].concat(ctCols);
-    const out = ctOrder.filter(k => base.indexOf(k) !== -1);
-    base.forEach(k => { if (out.indexOf(k) === -1) out.push(k); });
-    return out;
+  function ctFullOrder(){ return ctCols.slice(); }
+  function ctVisibleOrder(){ return ctCols.filter(k => !(k === 'budget' && campTab === 'ads')); }
+  function ctSaveOrder(full){ ctCols = full.filter(ctValid); saveCtCols(); }
+  function ctColLabel(k){
+    if (k === 'origin') return campTab === 'ads' ? 'Conjunto · Campanha · Conta' : campTab === 'adsets' ? 'Campanha · Conta' : 'Conta';
+    if (k === 'status') return 'Status';
+    return k === 'budget' && campTab === 'campaigns' ? 'Orç. ativo/dia' : CT_CATALOG[k].label;
   }
-  function ctVisibleOrder(){ return ctFullOrder().filter(k => !(k === 'ctx' && campTab === 'campaigns') && !(k === 'budget' && campTab === 'ads')); }
-  function ctSaveOrder(full){
-    ctOrder = full; savePref('ctOrder', JSON.stringify(full));
-    ctCols = full.filter(k => CT_CATALOG[k]); saveCtCols();
-  }
+  const ctPanelName = (k) => k === 'origin' ? 'Conjunto · Campanha · Conta' : k === 'status' ? 'Status' : CT_CATALOG[k].label;
 
   function ctNicheOf(name){
     const n = String(name || '').split(' - ')[0].trim().toUpperCase();
@@ -3560,23 +3589,69 @@
     document.getElementById('ctStatus').value = ctStatusF;
   }
 
+  // saved views ("visões"): a named set of columns (order + visibility + widths), kept on the server so they follow you to the phone
+  let ctPresets = [];
+  const CT_PRESETS_API = TOPUPS_API.replace(/\/topups$/, '') + '/col-presets';
+  function loadCtPresets(){ return fetch(CT_PRESETS_API, { cache: 'no-store' }).then(r => r.json()).then(j => { ctPresets = j.presets || []; renderCtColsPanel(); }).catch(() => {}); }
+  function ctPresetApi(path, method, body){
+    return fetch(CT_PRESETS_API + (path || ''), { method: method || 'GET', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
   function renderCtColsPanel(){
     const panel = document.getElementById('ctColsPanel');
-    const rest = Object.keys(CT_CATALOG).filter(k => ctCols.indexOf(k) === -1);
-    panel.innerHTML = '<div class="ct-cols-title">Colunas (a ordem daqui é a da tabela)</div>' +
-      ctCols.map((k, i) => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '" checked> ' + CT_CATALOG[k].label + '</label>' +
-        '<span><button type="button" data-col-up="' + k + '"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-col-down="' + k + '"' + (i === ctCols.length - 1 ? ' disabled' : '') + '>↓</button></span></div>').join('') +
-      (rest.length ? '<div class="ct-cols-title">Disponíveis</div>' + rest.map(k => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '"> ' + CT_CATALOG[k].label + '</label></div>').join('') : '') +
+    const all = Object.keys(CT_NONMETRIC).concat(Object.keys(CT_CATALOG));
+    const rest = all.filter(k => ctCols.indexOf(k) === -1);
+    panel.innerHTML =
+      '<div class="ct-cols-title">Minhas visões</div><div class="ct-presets">' +
+      ctPresets.map(p => '<span class="ct-preset"><button type="button" data-preset="' + ccEsc(p.id) + '">' + ccEsc(p.name) + '</button><button type="button" class="x" data-preset-del="' + ccEsc(p.id) + '" title="Apagar esta visão">✕</button></span>').join('') +
+      '<button type="button" class="ct-preset-save" id="ctPresetSave">+ Salvar as colunas atuais</button></div>' +
+      '<div class="ct-cols-title">Colunas (arraste o ⋮⋮ ou use as setas)</div><div id="ctColsList">' +
+      ctCols.map((k, i) => '<div class="ct-col-row" data-col-row="' + k + '"><span class="ct-grip" data-grip="' + k + '" title="Arraste pra mudar a ordem">⋮⋮</span><label><input type="checkbox" data-col-toggle="' + k + '" checked> ' + ctPanelName(k) + '</label>' +
+        '<span><button type="button" data-col-up="' + k + '"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-col-down="' + k + '"' + (i === ctCols.length - 1 ? ' disabled' : '') + '>↓</button></span></div>').join('') + '</div>' +
+      (rest.length ? '<div class="ct-cols-title">Disponíveis</div>' + rest.map(k => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '"> ' + ctPanelName(k) + '</label></div>').join('') : '') +
       '<button type="button" class="bell-pop-link" id="ctColsReset">Restaurar colunas e larguras (padrão LS)</button>';
     panel.querySelectorAll('[data-col-toggle]').forEach(c => c.addEventListener('change', () => {
       const k = c.dataset.colToggle;
       if (c.checked) { if (ctCols.indexOf(k) === -1) ctCols.push(k); } else if (ctCols.length > 1) ctCols = ctCols.filter(x => x !== k);
       saveCtCols(); renderCtColsPanel(); renderCampanhas();
     }));
-    const move = (k, d) => { const i = ctCols.indexOf(k), j = i + d; if (j < 0 || j >= ctCols.length) return; const full = ctFullOrder(), a = full.indexOf(ctCols[i]), b = full.indexOf(ctCols[j]); [full[a], full[b]] = [full[b], full[a]]; ctSaveOrder(full); renderCtColsPanel(); renderCampanhas(); };
+    const move = (k, d) => { const i = ctCols.indexOf(k), j = i + d; if (j < 0 || j >= ctCols.length) return; [ctCols[i], ctCols[j]] = [ctCols[j], ctCols[i]]; saveCtCols(); renderCtColsPanel(); renderCampanhas(); };
     panel.querySelectorAll('[data-col-up]').forEach(b => b.addEventListener('click', () => move(b.dataset.colUp, -1)));
     panel.querySelectorAll('[data-col-down]').forEach(b => b.addEventListener('click', () => move(b.dataset.colDown, 1)));
-    document.getElementById('ctColsReset').addEventListener('click', () => { ctCols = CT_DEFAULT_COLS.slice(); saveCtCols(); ctOrder = []; ctWidths = {}; savePref('ctOrder', '[]'); savePref('ctWidths', '{}'); renderCtColsPanel(); renderCampanhas(); });
+    // drag by the grip (pointer events: works with the finger too)
+    panel.querySelectorAll('[data-grip]').forEach(g => g.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const list = document.getElementById('ctColsList'), row = g.closest('.ct-col-row');
+      row.classList.add('dragging'); try { g.setPointerCapture(e.pointerId); } catch (err) {}
+      const onMove = (ev) => {
+        const under = document.elementFromPoint(ev.clientX, ev.clientY), tr = under && under.closest && under.closest('#ctColsList .ct-col-row');
+        if (!tr || tr === row) return;
+        const r = tr.getBoundingClientRect();
+        if (ev.clientY < r.top + r.height / 2) list.insertBefore(row, tr); else list.insertBefore(row, tr.nextSibling);
+      };
+      const onUp = () => {
+        g.removeEventListener('pointermove', onMove); g.removeEventListener('pointerup', onUp); g.removeEventListener('pointercancel', onUp);
+        row.classList.remove('dragging');
+        ctCols = [...list.querySelectorAll('.ct-col-row')].map(r => r.dataset.colRow).filter(ctValid); saveCtCols(); renderCtColsPanel(); renderCampanhas();
+      };
+      g.addEventListener('pointermove', onMove); g.addEventListener('pointerup', onUp); g.addEventListener('pointercancel', onUp);
+    }));
+    panel.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { const p = ctPresets.find(x => x.id === b.dataset.preset); if (p) ctApplyPreset(p); }));
+    panel.querySelectorAll('[data-preset-del]').forEach(b => b.addEventListener('click', () => {
+      const p = ctPresets.find(x => x.id === b.dataset.presetDel);
+      if (p && confirm('Apagar a visão "' + p.name + '"?')) ctPresetApi('/' + encodeURIComponent(p.id), 'DELETE').then(j => { ctPresets = j.presets || []; renderCtColsPanel(); }).catch(() => alert('Não consegui apagar agora.'));
+    }));
+    document.getElementById('ctPresetSave').addEventListener('click', () => {
+      const name = (prompt('Nome da visão (ex.: Funil, Custos, Criativos):') || '').trim();
+      if (!name) return;
+      ctPresetApi('', 'POST', { name, cols: ctCols, widths: ctWidths }).then(j => { ctPresets = j.presets || []; renderCtColsPanel(); }).catch(() => alert('Não consegui salvar a visão agora. Tente de novo.'));
+    });
+    document.getElementById('ctColsReset').addEventListener('click', () => { ctCols = CT_DEFAULT_COLS.slice(); saveCtCols(); ctWidths = {}; savePref('ctWidths', '{}'); renderCtColsPanel(); renderCampanhas(); });
+  }
+  function ctApplyPreset(p){
+    ctCols = (p.cols || []).filter(ctValid); if (!ctCols.length) ctCols = CT_DEFAULT_COLS.slice();
+    ctWidths = p.widths && typeof p.widths === 'object' ? { ...p.widths } : {}; savePref('ctWidths', JSON.stringify(ctWidths));
+    saveCtCols(); renderCtColsPanel(); renderCampanhas();
   }
 
   function renderCampTable(){
@@ -3602,6 +3677,7 @@
       const k = campSort.key;
       if (k === 'name') return r.name.toLowerCase();
       if (k === 'status') return ctStatusKey(r);
+      if (k === 'origin') return ((r.sub || '') + ' ' + (r.setName || r.campName || '')).toLowerCase();
       const v = r[k];
       return v == null ? -Infinity : v;
     };
@@ -3614,7 +3690,7 @@
       chip('campaigns', 'campanha') + chip('adsets', 'conjunto') + '</div>';
 
     const vis = ctVisibleOrder();
-    const labelOf = (k) => k === 'ctx' ? (campTab === 'ads' ? 'Conjunto · Campanha' : 'Campanha') : k === 'conta' ? 'Conta' : k === 'status' ? 'Status' : (k === 'budget' && campTab === 'campaigns' ? 'Orç. ativo/dia' : CT_CATALOG[k].label);
+    const labelOf = ctColLabel;
     const thx = (key, label, cls, movable) => '<th class="' + cls + '" data-ct-sort="' + key + '" data-ct-col="' + key + '"' + (movable ? ' draggable="true"' : '') + '>' + label + (campSort.key === key ? (dir < 0 ? ' ↓' : ' ↑') : '') + '<span class="col-rs" data-rs="' + key + '"></span></th>';
     const nameLabel = { campaigns: 'Campanha', adsets: 'Conjunto', ads: 'Anúncio' }[campTab];
     const cols = vis.filter(k => CT_CATALOG[k]);
@@ -3637,11 +3713,10 @@
       return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
         '<td class="c"><input type="checkbox" data-ct-check="' + r.id + '"' + (ctSel[campTab].has(r.id) ? ' checked' : '') + '></td>' +
         '<td class="c"><label class="toggle-switch small"><input type="checkbox" data-t-status="' + r.id + '" data-t-type="' + r.type + '" data-account-key="' + r.accountKey + '"' + (r.on ? ' checked' : '') + '><span class="toggle-track"></span></label></td>' +
-        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + (campTab === 'ads' ? ccEsc(r.name) : '<button type="button" class="ctable-name-link" data-ct-open="' + r.id + '" title="' + (campTab === 'campaigns' ? 'Ver os conjuntos desta campanha' : 'Ver os anúncios deste conjunto') + '">' + ccEsc(r.name) + '</button>') + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
+        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + (campTab === 'ads' ? '<span class="ct-ad-line">' + ccEsc(r.name) + '<button type="button" class="ct-pencil" data-ct-edit="' + r.id + '" title="Editar este anúncio (trocar criativo, título, descrição)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></span>' : '<button type="button" class="ctable-name-link" data-ct-open="' + r.id + '" title="' + (campTab === 'campaigns' ? 'Ver os conjuntos desta campanha' : 'Ver os anúncios deste conjunto') + '">' + ccEsc(r.name) + '</button>') + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
         vis.map(k => {
-          if (k === 'ctx') return campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>'
-            : '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>';
-          if (k === 'conta') return '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.sub) + '</div></td>';
+          if (k === 'origin') return '<td class="l">' + (campTab === 'ads' ? '<div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div>'
+            : campTab === 'adsets' ? '<div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div>' : '') + '<div class="ctable-sub"' + (campTab === 'campaigns' ? ' style="color:var(--ink);"' : '') + '>' + ccEsc(r.sub) + '</div></td>';
           if (k === 'status') return '<td class="l"><span class="roas-pill ' + badge[1] + '">' + badge[0] + '</span>' + (r.reason && sk !== 'review' ? '<div class="ctable-sub">' + ccEsc(r.reason) + '</div>' : '') + '</td>';
           return k === 'budget' ? budgetCell : ctCell(r, k);
         }).join('') + '<td class="spacer"></td>' +
@@ -3660,6 +3735,11 @@
 
     wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
     wrap.querySelectorAll('[data-ct-clear]').forEach(b => b.addEventListener('click', () => { ctSel[b.dataset.ctClear] = new Set(); renderCampanhas(); }));
+    wrap.querySelectorAll('[data-ct-edit]').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = shown.find(x => x.id === b.dataset.ctEdit);
+      if (row) ctOpenAdEdit([row]);
+    }));
     wrap.querySelectorAll('[data-ct-open]').forEach(b => b.addEventListener('click', () => {
       const id = b.dataset.ctOpen;
       if (campTab === 'campaigns') { ctSel.campaigns = new Set([id]); ctSel.adsets = new Set(); campTab = 'adsets'; }
@@ -3721,7 +3801,7 @@
         const mv = (ev) => { const w = Math.max(50, Math.round(startW + ev.clientX - startX)); ctWidths[key] = w; col.style.width = w + 'px'; table.style.minWidth = (startTable + w - startW) + 'px'; };
         const up = () => {
           document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up);
-          h.classList.remove('on'); document.body.classList.remove('col-resizing'); th.draggable = !!CT_CATALOG[key] || !!CT_FIXED[key];
+          h.classList.remove('on'); document.body.classList.remove('col-resizing'); th.draggable = ctValid(key);
           savePref('ctWidths', JSON.stringify(ctWidths)); ctLastDrag = Date.now();
         };
         document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
@@ -3754,8 +3834,8 @@
   }
   // Edit ads in bulk from Campanhas (any status, e.g. the ones NewsBreak flags with the red triangle but still shows as approved):
   // same sheet as Rejeições (swap creative, title, description, with the number following in the names).
-  async function ctOpenAdEdit(){
-    const rows = ctSelectedRows(); if (!rows.length) return;
+  async function ctOpenAdEdit(rowsArg){
+    const rows = Array.isArray(rowsArg) ? rowsArg : ctSelectedRows(); if (!rows.length) return;
     const msg = document.getElementById('ctBulkMsg'), btn = document.getElementById('ctBulkEdit');
     btn.disabled = true; msg.textContent = 'Carregando os anúncios…';
     try {
@@ -3803,17 +3883,25 @@
 
   function initCampV2(){
     ctFillSelects();
-    renderCtColsPanel();
+    renderCtColsPanel(); loadCtPresets();
     document.getElementById('ctPeriod').addEventListener('change', (e) => { ctPeriod = e.target.value; ctLoadMetrics(ctPeriod).then(() => renderCampanhas()); renderCampanhas(); });
     document.getElementById('ctStatus').addEventListener('change', (e) => { ctStatusF = e.target.value; renderCampanhas(); });
     document.getElementById('campAccSel').addEventListener('change', (e) => { campAccF = e.target.value; ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() }; renderCampanhas(); });
     document.getElementById('ctNiche').addEventListener('change', (e) => { ctNicheF = e.target.value; renderCampanhas(); });
-    document.getElementById('ctColsBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ctColsPanel'); p.hidden = !p.hidden; });
+    const placeColsPanel = () => {
+      const p = document.getElementById('ctColsPanel'), r = document.getElementById('ctColsBtn').getBoundingClientRect();
+      const w = Math.min(300, window.innerWidth * 0.9);
+      p.style.top = Math.round(r.bottom + 6) + 'px';
+      p.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
+      p.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 20) + 'px';
+    };
+    document.getElementById('ctColsBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ctColsPanel'); p.hidden = !p.hidden; if (!p.hidden) placeColsPanel(); });
+    window.addEventListener('resize', () => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden) placeColsPanel(); });
     document.addEventListener('click', (e) => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden && !e.target.closest('.ct-cols-wrap')) p.hidden = true; });
     document.getElementById('ctBulkOn').addEventListener('click', () => ctBulkStatus('ON'));
     document.getElementById('ctBulkOff').addEventListener('click', () => ctBulkStatus('OFF'));
     document.getElementById('ctBulkDel').addEventListener('click', ctOpenDelete);
-    document.getElementById('ctBulkEdit').addEventListener('click', ctOpenAdEdit);
+    document.getElementById('ctBulkEdit').addEventListener('click', () => ctOpenAdEdit());
     document.getElementById('ctBulkClear').addEventListener('click', () => { ctSel[campTab] = new Set(); renderCampanhas(); });
     document.getElementById('ctDelInput').addEventListener('input', (e) => { document.getElementById('ctDelGo').disabled = e.target.value.trim() !== 'EXCLUIR'; });
     document.getElementById('ctDelGo').addEventListener('click', ctRunDelete);
@@ -3899,6 +3987,34 @@
       workerSubs = j.subAccounts; mergeWorkerSubs(); renderSaldo(); renderAlertBanner();
     }).catch(() => {});
   }
+  // button + floating panel; the first box ("all") ticks/unticks everything, then you only change what differs
+  function msPlace(btn, panel){
+    const r = btn.getBoundingClientRect(), w = Math.min(Math.max(r.width, 260), window.innerWidth - 16);
+    panel.style.width = w + 'px';
+    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    panel.style.top = Math.round(r.bottom + 4) + 'px';
+    panel.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 16) + 'px';
+  }
+  function msRender(box, o){
+    const btn = box.querySelector('.ms2-btn'), panel = box.querySelector('.ms2-panel'), sel = o.selected;
+    const allOn = o.options.length > 0 && o.options.every(x => sel.has(x.id));
+    const picked = o.options.filter(x => sel.has(x.id));
+    btn.textContent = !o.options.length ? 'Nada disponível' : allOn ? o.allLabel : !picked.length ? (o.noneLabel || 'Nenhum marcado') : picked.length <= 2 ? picked.map(x => x.short || x.name).join(', ') : picked.length + ' selecionados';
+    panel.innerHTML = '<label class="all"><input type="checkbox" data-ms-all' + (allOn ? ' checked' : '') + '> ' + o.allLabel + '</label>' +
+      o.options.map(x => '<label><input type="checkbox" data-ms-opt="' + ccEsc(x.id) + '"' + (sel.has(x.id) ? ' checked' : '') + '> ' + ccEsc(x.name) + '</label>').join('');
+    panel.querySelector('[data-ms-all]').addEventListener('change', (e) => { sel.clear(); if (e.target.checked) o.options.forEach(x => sel.add(x.id)); msRender(box, o); if (o.onChange) o.onChange(); });
+    panel.querySelectorAll('[data-ms-opt]').forEach(c => c.addEventListener('change', () => {
+      const x = o.options.find(z => String(z.id) === c.dataset.msOpt); if (!x) return;
+      if (c.checked) sel.add(x.id); else sel.delete(x.id);
+      msRender(box, o); if (o.onChange) o.onChange();
+    }));
+  }
+  function msWire(box){
+    const btn = box.querySelector('.ms2-btn'), panel = box.querySelector('.ms2-panel');
+    btn.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.ms2-panel').forEach(p => { if (p !== panel) p.hidden = true; }); panel.hidden = !panel.hidden; if (!panel.hidden) msPlace(btn, panel); });
+  }
+  document.addEventListener('click', (e) => { if (!e.target.closest('.ms2')) document.querySelectorAll('.ms2-panel').forEach(p => { p.hidden = true; }); });
+  window.addEventListener('resize', () => document.querySelectorAll('.ms2').forEach(b => { const p = b.querySelector('.ms2-panel'); if (p && !p.hidden) msPlace(b.querySelector('.ms2-btn'), p); }));
   let topupSel = new Set();
   function topupAccountIds(){
     return Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
@@ -3907,22 +4023,14 @@
   function renderTopupAccountSelect(){
     const ids = topupAccountIds();
     topupSel = new Set([...topupSel].filter(id => ids.indexOf(id) !== -1));
-    const panel = document.getElementById('topupAccPanel');
+    const box = document.getElementById('topupMs');
     const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|') + '#' + [...topupSel].join(',');
-    const btn = document.getElementById('topupAccBtn');
-    btn.textContent = topupSel.size === 0 ? 'Escolher contas' : topupSel.size === 1 ? subDisplayName([...topupSel][0]) : topupSel.size + ' contas selecionadas';
-    if (panel.dataset.sig === sig) return;
-    panel.dataset.sig = sig;
-    panel.innerHTML = (ids.length ? '<label class="all"><input type="checkbox" id="topupAll"' + (ids.length && topupSel.size === ids.length ? ' checked' : '') + '> Todas as contas</label>' : '<div class="cell-muted" style="padding:6px;">Nenhuma conta ainda.</div>') +
-      ids.map(id => '<label><input type="checkbox" data-topup-acc="' + id + '"' + (topupSel.has(id) ? ' checked' : '') + '> ' + ccEsc(subDisplayName(id)) + '</label>').join('') +
-      '<button type="button" class="ms-ok" id="topupAccOk">OK</button>';
-    const all = panel.querySelector('#topupAll');
-    if (all) all.addEventListener('change', () => { topupSel = all.checked ? new Set(ids) : new Set(); panel.dataset.sig = ''; renderTopupAccountSelect(); });
-    panel.querySelectorAll('[data-topup-acc]').forEach(c => c.addEventListener('change', () => { if (c.checked) topupSel.add(c.dataset.topupAcc); else topupSel.delete(c.dataset.topupAcc); panel.dataset.sig = ''; renderTopupAccountSelect(); }));
-    panel.querySelector('#topupAccOk').addEventListener('click', () => { panel.hidden = true; });
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    msRender(box, { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: topupSel, allLabel: 'Todas as contas', noneLabel: 'Escolher contas', onChange: () => { box.dataset.sig = ''; } });
+    if (!topupSel.size) box.querySelector('.ms2-btn').textContent = 'Escolher contas';
   }
-  document.getElementById('topupAccBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('topupAccPanel'); p.hidden = !p.hidden; });
-  document.addEventListener('click', (e) => { const p = document.getElementById('topupAccPanel'); if (p && !p.hidden && !e.target.closest('#topupMs')) p.hidden = true; });
+  msWire(document.getElementById('topupMs'));
 
   // ---- balance alert rules ----
   const BAL_RULES_API = TOPUPS_API.replace(/\/topups$/, '') + '/balance-rules';
@@ -3967,20 +4075,23 @@
       if (r && confirm('Excluir a regra "' + r.name + '"?')) balApi('/' + encodeURIComponent(r.id), 'DELETE').then(j => { balRules = j.rules; renderBalRules(); renderAlertBanner(); });
     }));
   }
+  const BAL_DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   function renderBalSheetBody(){
     const ids = topupAccountIds();
-    document.getElementById('balRuleAccs').innerHTML = ids.map(id => '<label><input type="checkbox" data-bal-acc="' + id + '"' + (balEditAccs.has(id) ? ' checked' : '') + '> ' + ccEsc(subDisplayName(id)) + '</label>').join('') || '<div class="cell-muted" style="padding:6px;">Nenhuma conta ainda.</div>';
-    document.getElementById('balRuleAccs').querySelectorAll('[data-bal-acc]').forEach(c => c.addEventListener('change', () => { if (c.checked) balEditAccs.add(c.dataset.balAcc); else balEditAccs.delete(c.dataset.balAcc); }));
-    document.getElementById('balRuleDays').innerHTML = BAL_DAYS.map((n, i) => '<button type="button" class="pill' + (balEditDays.has(i) ? ' active' : '') + '" data-bal-day="' + i + '">' + n + '</button>').join('');
-    document.getElementById('balRuleDays').querySelectorAll('[data-bal-day]').forEach(b => b.addEventListener('click', () => { const d = Number(b.dataset.balDay); if (balEditDays.has(d)) balEditDays.delete(d); else balEditDays.add(d); renderBalSheetBody(); }));
+    msRender(document.getElementById('balRuleAccBox'), { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: balEditAccs, allLabel: 'Todas as contas' });
+    msRender(document.getElementById('balRuleDayBox'), { options: BAL_DAY_NAMES.map((n, i) => ({ id: i, name: n, short: BAL_DAYS[i] })), selected: balEditDays, allLabel: 'Todos os dias' });
   }
+  msWire(document.getElementById('balRuleAccBox')); msWire(document.getElementById('balRuleDayBox'));
   function openBalRuleSheet(rule){
     balEditing = rule || null;
     document.getElementById('balRuleTitle').textContent = rule ? 'Editar regra de saldo' : 'Nova regra de saldo';
     document.getElementById('balRuleName').value = rule ? rule.name : '';
     document.getElementById('balRuleThr').value = rule ? rule.threshold : '';
     document.getElementById('balRuleMsg').textContent = '';
-    balEditAccs = new Set(rule ? rule.accountIds || [] : []); balEditDays = new Set(rule ? rule.weekdays || [] : []);
+    // new rule (or "all" saved as empty): everything ticked; untick what you don't want
+    const allIds = topupAccountIds();
+    balEditAccs = new Set(rule && rule.accountIds && rule.accountIds.length ? rule.accountIds : allIds);
+    balEditDays = new Set(rule && rule.weekdays && rule.weekdays.length ? rule.weekdays : [0, 1, 2, 3, 4, 5, 6]);
     renderBalSheetBody();
     document.getElementById('balRuleSheet').hidden = false;
   }
@@ -3993,7 +4104,12 @@
     if (!name) { msg.textContent = 'Dê um nome à regra.'; return; }
     if (!isFinite(thr) || thr < 0 || document.getElementById('balRuleThr').value === '') { msg.textContent = 'Informe o valor (em dólar).'; return; }
     msg.textContent = 'Salvando…';
-    balApi('', 'POST', { id: balEditing ? balEditing.id : undefined, name, threshold: thr, enabled: balEditing ? balEditing.enabled !== false : true, accountIds: [...balEditAccs], weekdays: [...balEditDays] })
+    const allIds = topupAccountIds();
+    if (!balEditAccs.size) { msg.textContent = 'Marque pelo menos uma conta.'; return; }
+    if (!balEditDays.size) { msg.textContent = 'Marque pelo menos um dia.'; return; }
+    // everything ticked is saved as "all" (so accounts added later are covered too)
+    const accIds = allIds.every(id => balEditAccs.has(id)) ? [] : [...balEditAccs], days = balEditDays.size === 7 ? [] : [...balEditDays];
+    balApi('', 'POST', { id: balEditing ? balEditing.id : undefined, name, threshold: thr, enabled: balEditing ? balEditing.enabled !== false : true, accountIds: accIds, weekdays: days })
       .then(j => { balRules = j.rules; document.getElementById('balRuleSheet').hidden = true; renderBalRules(); renderAlertBanner(); })
       .catch(() => { msg.textContent = 'Não consegui salvar — tenta de novo.'; });
   });
