@@ -394,7 +394,7 @@ async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAcco
       adsetSummaries.push({
         id: a.id, name: a.name, status: a.status, onlineStatus: a.onlineStatus,
         budget: a.budget != null ? a.budget / 100 : null,
-        budgetType: a.budgetType, adsOn, adsTotal: myAds.length, reallyActive: adsetReallyOn,
+        budgetType: a.budgetType, startTime: a.startTime || null, endTime: a.endTime || null, adsOn, adsTotal: myAds.length, reallyActive: adsetReallyOn,
         ads: myAds.map((ad) => {
           const content = (ad.creative && ad.creative.content) || {};
           return {
@@ -927,6 +927,63 @@ async function triggerSync(env) {
 }
 
 // ---- Push alerts for rejected ads (Pushcut). Inert unless the secret PUSHCUT_URL is set on the Worker. ----
+// NewsBreak flags ads with "quality issues" (they barely spend) but the API shows nothing on the ad. The only trace is the CAMPAIGN
+// turning WARNING while every ad running inside is approved. An ad still under review explains the WARNING by itself (skipped); an ad set
+// stuck in WARNING ("No active ads") with approved ads inside is just NewsBreak lagging behind, so it does not hide the campaign.
+function warnedCampaigns(data) {
+  const out = [];
+  for (const c of (data && data.campaigns) || []) {
+    if (c.status !== "ON" || c.onlineStatus !== "WARNING") continue;
+    // a campaign that has not started yet (scheduled start in the future) is WARNING by itself: only ad sets that started 10+ min ago count
+    const started = (s) => !s.startTime || s.startTime * 1000 <= Date.now() - 10 * 60 * 1000;
+    const sets = (c.adSets || []).filter((s) => s.status === "ON" && started(s));
+    const ads = [];
+    let reviewing = false;
+    for (const s of sets) for (const ad of s.ads || []) {
+      if (ad.status !== "ON") continue;
+      if (["PENDING", "IN_REVIEW", "UNDER_REVIEW"].includes(ad.auditStatus)) reviewing = true;
+      else if (ad.auditStatus === "APPROVED") ads.push({ id: ad.id, name: ad.name, cost: ad.todayCost || 0 });
+    }
+    if (reviewing || !ads.length) continue;
+    out.push({ id: c.id, name: c.name, acc: c.accountKey, account: c.adAccountName || c.accountKey, ads, budget: c.activeBudget, cost: c.todayCost || 0 });
+  }
+  return out;
+}
+
+async function pushQualityWarnings(env, data) {
+  if (!(await pushTargets(env, "rejections")).length) return;
+  const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
+  const now = Date.now();
+  const raw = await env.COSTS_KV.get("push_state_warn");
+  const state = raw ? JSON.parse(raw) : {};
+  const failed = new Set((data && data.failedAccounts) || []);
+  const next = {};
+  for (const [id, st] of Object.entries(state)) { if (st && st.acc && failed.has(st.acc)) next[id] = st; }
+  const fresh = [], reminders = [];
+  // wait 10 min with the campaign in this state before the first alert: right after an approval NewsBreak's statuses lag a few minutes
+  const dwellMs = 10 * 60 * 1000;
+  for (const c of warnedCampaigns(data)) {
+    const prev = state[c.id];
+    if (!prev) next[c.id] = { first: now, last: 0, acc: c.acc, notified: false };
+    else if (!prev.notified) {
+      if (now - prev.first >= dwellMs) { fresh.push(c); next[c.id] = { first: prev.first, last: now, acc: c.acc, notified: true }; }
+      else next[c.id] = { ...prev, acc: c.acc };
+    }
+    else if (now - prev.last >= repeatMs) { reminders.push(c); next[c.id] = { ...prev, last: now, acc: c.acc }; }
+    else next[c.id] = { ...prev, acc: c.acc };
+  }
+  const line = (c) => c.account + " · " + c.name + " — " + c.ads.length + " anúncio" + (c.ads.length === 1 ? "" : "s") + " aprovado" + (c.ads.length === 1 ? "" : "s") + ", gasto hoje $" + round2(c.cost) + (c.budget ? " de $" + round2(c.budget) : "");
+  if (fresh.length) {
+    const r = await sendPush(env, "Campanha com aviso da NewsBreak" + (fresh.length > 1 ? " (" + fresh.length + ")" : ""), fresh.slice(0, 5).map(line).join("\n") + "\nPode ser problema de qualidade: o anúncio quase não gasta.", "rejections");
+    if (!r.ok) fresh.forEach((c) => { next[c.id] = { ...next[c.id], notified: false }; });
+  }
+  if (reminders.length) {
+    const r = await sendPush(env, "Ainda com aviso" + (reminders.length > 1 ? " (" + reminders.length + ")" : ""), reminders.slice(0, 5).map(line).join("\n"), "rejections");
+    if (!r.ok) reminders.forEach((c) => { next[c.id] = state[c.id]; });
+  }
+  await env.COSTS_KV.put("push_state_warn", JSON.stringify(next));
+}
+
 function pushReason(txt) {
   const raw = String(txt || "").trim();
   const t = raw.toLowerCase();
@@ -1830,6 +1887,7 @@ export default {
         if (data) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
+          try { await pushQualityWarnings(env, data); } catch (e) { note += "; push_warn_error:" + String((e && e.message) || e).slice(0, 100); }
           try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }
           if ((data.failedAccounts || []).length) note = (note === "ok" ? "ok" : note) + "; failedAccounts:" + data.failedAccounts.join(",");
         }
@@ -2543,6 +2601,30 @@ export default {
         return json({ ok: true, ad: out }, 200, origin);
       } catch (e) {
         return json({ error: "nb_ad_update_failed", detail: String(e.message || e), nb: e.nbRaw || null }, 502, origin);
+      }
+    }
+
+    // rename an ad, ad set or campaign (used when a creative is swapped: the number in the names must follow the new creative)
+    if (url.pathname === "/nb/rename" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { accountKey, entityType, id } = body;
+      const name = String(body.name || "").trim();
+      const path = { ad: "ad", adset: "ad-set", campaign: "campaign" }[entityType];
+      if (!path || !id || name.length < 3 || name.length > 200) return json({ error: "invalid_body" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        let out;
+        for (let attempt = 0; ; attempt++) {
+          try { out = await nbApi(token, `${path}/update/${id}`, { method: "PUT", body: JSON.stringify({ name }) }); break; }
+          catch (err) { if (err.nbRaw || attempt >= 2) throw err; await new Promise((r) => setTimeout(r, 1200 * (attempt + 1))); }
+        }
+        await env.COSTS_KV.delete("live_campanhas");
+        return json({ ok: true }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_rename_failed", detail: String((e && e.message) || e), nb: e.nbRaw || null }, 502, origin);
       }
     }
 
